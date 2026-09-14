@@ -78,9 +78,11 @@ a {
 .scene__canvas {
   z-index: 1;
   background: var(--page);
-  opacity: 1;
+  opacity: 0;
   filter: brightness(1.12) contrast(1.03) saturate(1.02);
 }
+
+.scene[data-scene-state='ready'] .scene__canvas { opacity: 1; }
 
 .scene[data-scene-state='failed'] .scene__canvas,
 .scene[data-scene-state='lost'] .scene__canvas { opacity: 0; }

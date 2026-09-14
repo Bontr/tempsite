@@ -27,6 +27,7 @@ if (!canvas || !home) throw new Error('Bontr scene mount was not found.');
 const sceneRoot = canvas.closest<HTMLElement>('[data-parallax-scene]');
 const setSceneState = (state: 'loading' | 'ready' | 'lost' | 'failed') => {
   canvas.dataset.sceneState = state;
+  canvas.style.opacity = state === 'ready' ? '1' : '0';
   if (sceneRoot) sceneRoot.dataset.sceneState = state;
 };
 
@@ -475,12 +476,21 @@ ScrollTrigger.refresh();
 const startRendering = async () => {
   applyScene(scrollState.progress, 0);
   try {
-    renderer.compile(scene, camera);
+    await renderer.compileAsync(scene, camera);
     renderer.render(scene, camera);
+
+    // Do not expose the canvas until every queued draw has actually completed.
+    // This prevents refreshes from showing lines/partial point clouds while the GPU is still uploading.
+    renderer.getContext().finish();
+    const expectedPoints = quality.morphCount * 4 + quality.terrainCount + quality.starCount;
+    if (renderer.info.render.points < expectedPoints) {
+      throw new Error(`Incomplete startup frame: ${renderer.info.render.points}/${expectedPoints} points rendered.`);
+    }
+
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    applyScene(scrollState.progress, 0);
     renderer.render(scene, camera);
-    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-    renderer.render(scene, camera);
+    renderer.getContext().finish();
     sceneReady = true;
     setSceneState('ready');
     setWebglLive(true);
