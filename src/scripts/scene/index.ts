@@ -13,7 +13,6 @@ import {
   terrainHeight,
 } from './baked';
 import {
-  createGlowMaterial,
   createParticleMaterial,
   createTerrainPointMaterial,
 } from './materials';
@@ -84,7 +83,7 @@ renderer.setPixelRatio(initialPixelRatio);
 renderer.setSize(window.innerWidth, window.innerHeight, false);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 2.20;
+renderer.toneMappingExposure = 1.92;
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x020202);
@@ -100,14 +99,16 @@ const flowerMaterial = createParticleMaterial(initialPixelRatio, {
   opacity: 1.0,
   twinkleStrength: 0.0,
   twinkleRate: 0.0,
-  intensity: 2.85,
+  intensity: 1.95,
+  sizeMultiplier: 1.08,
   additive: true,
 });
 const galaxyMaterial = createParticleMaterial(initialPixelRatio, {
   opacity: 1.0,
   twinkleStrength: 0.0,
   twinkleRate: 0.0,
-  intensity: 1.75,
+  intensity: 1.58,
+  sizeMultiplier: 1.08,
   additive: true,
 });
 const starMaterial = createParticleMaterial(initialPixelRatio, {
@@ -115,9 +116,10 @@ const starMaterial = createParticleMaterial(initialPixelRatio, {
   twinkleStrength: 0.98,
   twinkleRate: 1.0,
   driftStrength: 0,
-  intensity: 1.12,
+  intensity: 1.06,
+  sizeMultiplier: 0.98,
 });
-const terrainMaterial = createTerrainPointMaterial(initialPixelRatio, 1.0);
+const terrainMaterial = createTerrainPointMaterial(initialPixelRatio, 1.0, 1.10, 1.18);
 
 const flowerPoints = new THREE.Points(flowerGeometry, flowerMaterial);
 flowerPoints.frustumCulled = false;
@@ -139,34 +141,20 @@ starPoints.frustumCulled = false;
 starPoints.renderOrder = -20;
 scene.add(starPoints);
 
-const flowerGlowMaterial = createGlowMaterial();
-const flowerGlow = new THREE.Mesh(new THREE.PlaneGeometry(4.95, 3.42), flowerGlowMaterial);
-flowerGlow.position.copy(FLOWER_CENTER).add(new THREE.Vector3(0.05, 0.08, -0.35));
-scene.add(flowerGlow);
-
-const flowerCoreGlowMaterial = createGlowMaterial();
-flowerCoreGlowMaterial.uniforms.uColor.value.setRGB(1.45, 0.78, 0.38);
-const flowerCoreGlow = new THREE.Mesh(new THREE.PlaneGeometry(1.55, 1.55), flowerCoreGlowMaterial);
-flowerCoreGlow.position.set(FLOWER_CENTER.x + 0.02, -0.86, FLOWER_CENTER.z + 0.08);
-scene.add(flowerCoreGlow);
-
-const galaxyGlowMaterial = createGlowMaterial();
-const galaxyGlow = new THREE.Mesh(new THREE.PlaneGeometry(3.7, 2.3), galaxyGlowMaterial);
-galaxyGlow.position.copy(GALAXY_CENTER).add(new THREE.Vector3(0.05, -worldGap + 0.02, -0.3));
-scene.add(galaxyGlow);
 
 const silhouetteMaterial = new THREE.MeshBasicMaterial({
-  color: 0x050505,
+  color: 0x000000,
   transparent: true,
   opacity: 1,
   depthWrite: false,
+  depthTest: false,
 });
 const person = new THREE.Group();
 const personX = -1.65;
 const personZ = 1.7;
-const personBaseScale = 0.58;
+const personBaseScale = 0.80;
 const personGround = terrainHeight(personX, personZ);
-person.position.set(personX, personGround + 0.14, personZ);
+person.position.set(personX, personGround + 0.16, personZ);
 person.scale.setScalar(personBaseScale);
 
 const head = new THREE.Mesh(new THREE.SphereGeometry(0.085, 14, 10), silhouetteMaterial);
@@ -186,20 +174,17 @@ addLimb(-0.08, 0.2, 0.08, 0.42, 0.026);
 addLimb(0.08, 0.2, -0.08, 0.42, 0.026);
 addLimb(-0.1, 0.49, -0.18, 0.34, 0.022);
 addLimb(0.1, 0.49, 0.18, 0.34, 0.022);
+person.traverse((object) => {
+  if (object instanceof THREE.Mesh) object.renderOrder = 20;
+});
 foreground.add(person);
 
-const personHaloMaterial = createGlowMaterial();
-personHaloMaterial.uniforms.uOpacity.value = 0.18;
-const personHalo = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 1.18), personHaloMaterial);
-personHalo.position.set(personX, personGround + 0.31, personZ - 0.04);
-personHalo.frustumCulled = false;
-foreground.add(personHalo);
 
 const contactShadowMaterial = new THREE.ShaderMaterial({
   transparent: true,
   depthWrite: false,
   depthTest: false,
-  uniforms: { uOpacity: { value: 0.56 } },
+  uniforms: { uOpacity: { value: 0.36 } },
   vertexShader: `varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
   fragmentShader: `uniform float uOpacity; varying vec2 vUv; void main(){ vec2 p=(vUv-0.5)*vec2(1.0,1.65); float d=dot(p,p); float a=(1.0-smoothstep(0.018,0.24,d))*uOpacity; if(a<0.008) discard; gl_FragColor=vec4(0.0,0.0,0.0,a); }`,
 });
@@ -414,18 +399,8 @@ const applyScene = (progress: number, time: number) => {
   terrainMaterial.uniforms.uShadowLength.value = 4.9;
   terrainMaterial.uniforms.uShadowOpacity.value = 0.94;
 
-  flowerGlowMaterial.uniforms.uOpacity.value = 0.98 * flowerExit;
-  flowerGlow.visible = flowerExit > 0.002;
-  flowerGlow.quaternion.copy(camera.quaternion);
-  flowerCoreGlowMaterial.uniforms.uOpacity.value = 0.30 * flowerExit;
-  flowerCoreGlow.visible = flowerExit > 0.002;
-  flowerCoreGlow.quaternion.copy(camera.quaternion);
-  galaxyGlowMaterial.uniforms.uOpacity.value = 0.3;
-  galaxyGlow.quaternion.copy(camera.quaternion);
-  personHalo.quaternion.copy(camera.quaternion);
-  personHaloMaterial.uniforms.uOpacity.value = 0.18 * landscapeExit;
   silhouetteMaterial.opacity = landscapeExit;
-  contactShadowMaterial.uniforms.uOpacity.value = 0.56 * landscapeExit;
+  contactShadowMaterial.uniforms.uOpacity.value = 0.36 * landscapeExit;
 
   flowerOrbitA.material.opacity = 0.18 * flowerExit;
   flowerOrbitB.material.opacity = 0.08 * flowerExit;
@@ -524,10 +499,9 @@ window.addEventListener('pagehide', (event) => {
   renderer.setAnimationLoop(null);
   if (event.persisted) return;
   ScrollTrigger.getAll().forEach((trigger) => trigger.kill());
-  [flowerGeometry, galaxyGeometry, terrainGeometry, starGeometry, contactShadowGeometry, travelGeometry, flowerCoreGlow.geometry]
+  [flowerGeometry, galaxyGeometry, terrainGeometry, starGeometry, contactShadowGeometry, travelGeometry]
     .forEach((geometry) => geometry.dispose());
-  [flowerMaterial, galaxyMaterial, terrainMaterial, starMaterial, flowerGlowMaterial,
-    galaxyGlowMaterial, flowerCoreGlowMaterial, silhouetteMaterial, personHaloMaterial, contactShadowMaterial, travelMaterial]
+  [flowerMaterial, galaxyMaterial, terrainMaterial, starMaterial, silhouetteMaterial, contactShadowMaterial, travelMaterial]
     .forEach((material) => material.dispose());
   person.traverse((object) => {
     if (object instanceof THREE.Mesh) object.geometry.dispose();

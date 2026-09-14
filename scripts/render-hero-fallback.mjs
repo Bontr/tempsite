@@ -79,37 +79,6 @@ for (let i = 0; i < stars.length; i += 9) {
     1.25,
   );
 }
-const flowerCenter = project(4.9, 0.55, -6.2);
-if (flowerCenter) {
-  const [cx, cy] = flowerCenter;
-  const radius = 118;
-  for (let y = Math.floor(cy - radius); y <= Math.ceil(cy + radius); y += 1) {
-    for (let x = Math.floor(cx - radius); x <= Math.ceil(cx + radius); x += 1) {
-      const dx = x - cx;
-      const dy = y - cy;
-      const d = Math.sqrt(dx * dx + dy * dy) / radius;
-      if (d >= 1) continue;
-      const w = (1 - d) ** 3 * 0.32;
-      addPixel(x, y, 1.15, 0.56, 0.24, w);
-    }
-  }
-}
-
-const coreCenter = project(4.92, -0.86, -6.12);
-if (coreCenter) {
-  const [cx, cy] = coreCenter;
-  const rx = 52;
-  const ry = 38;
-  for (let y = Math.floor(cy - ry); y <= Math.ceil(cy + ry); y += 1) {
-    for (let x = Math.floor(cx - rx); x <= Math.ceil(cx + rx); x += 1) {
-      const d = Math.sqrt(((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2);
-      if (d >= 1) continue;
-      const w = (1 - d) ** 2.6 * 0.16;
-      addPixel(x, y, 1.22, 0.58, 0.26, w);
-    }
-  }
-}
-
 const orbit = (radiusX, radiusY, tiltDeg, spinDeg, intensity) => {
   const tilt = tiltDeg * Math.PI / 180;
   const spin = spinDeg * Math.PI / 180;
@@ -164,21 +133,7 @@ const personSvg = person ? Buffer.from(`
 const basePng = await sharp(pixels, {
   raw: { width: WIDTH, height: HEIGHT, channels: 3 },
 }).png().toBuffer();
-const glowNear = await sharp(basePng)
-  .linear(0.52, 0)
-  .blur(1.25)
-  .png()
-  .toBuffer();
-const glowWide = await sharp(basePng)
-  .linear(0.20, 0)
-  .blur(4.0)
-  .png()
-  .toBuffer();
-
-const composites = [
-  { input: glowNear, blend: 'screen' },
-  { input: glowWide, blend: 'screen' },
-];
+const composites = [];
 if (personSvg) composites.push({ input: personSvg, blend: 'over' });
 await sharp(basePng)
   .composite(composites)

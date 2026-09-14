@@ -67,6 +67,8 @@ const hash01 = (index: number, salt: number) => {
 const sampledIndex = (index: number, count: number, total: number) =>
   count <= 1 ? 0 : Math.min(total - 1, Math.floor((index / (count - 1)) * (total - 1)));
 
+type ParticleProfile = (x: number, y: number, z: number) => { sizeScale: number; intensity: number };
+
 const createStaticGeometry = (
   data: Float32Array,
   stride: number,
@@ -78,6 +80,7 @@ const createStaticGeometry = (
   seedOffset: number | null,
   seedSalt: number,
   sizeScale = 1,
+  profile?: ParticleProfile,
 ) => {
   const total = Math.floor(data.length / stride);
   const count = Math.min(total, countLimit);
@@ -86,20 +89,24 @@ const createStaticGeometry = (
   const sizes = new Float32Array(count);
   const glyphs = new Float32Array(count);
   const seeds = new Float32Array(count);
+  const intensities = new Float32Array(count);
 
   for (let index = 0; index < count; index += 1) {
     const sourceIndex = sampledIndex(index, count, total);
     const source = sourceIndex * stride;
     const target = index * 3;
-    positions[target] = data[source + positionOffset];
-    positions[target + 1] = data[source + positionOffset + 1];
-    positions[target + 2] = data[source + positionOffset + 2];
+    const x = data[source + positionOffset];
+    const y = data[source + positionOffset + 1];
+    const z = data[source + positionOffset + 2];
+    const local = profile?.(x, y, z) ?? { sizeScale: 1, intensity: 1 };
+    positions[target] = x; positions[target + 1] = y; positions[target + 2] = z;
     colors[target] = data[source + colorOffset];
     colors[target + 1] = data[source + colorOffset + 1];
     colors[target + 2] = data[source + colorOffset + 2];
-    sizes[index] = data[source + sizeOffset] * sizeScale;
+    sizes[index] = data[source + sizeOffset] * sizeScale * local.sizeScale;
     glyphs[index] = glyphOffset === null ? (hash01(sourceIndex, seedSalt + 17) < 0.008 ? 1 : 0) : data[source + glyphOffset];
     seeds[index] = seedOffset === null ? hash01(sourceIndex, seedSalt) : data[source + seedOffset];
+    intensities[index] = local.intensity;
   }
 
   const geometry = new THREE.BufferGeometry();
@@ -108,21 +115,44 @@ const createStaticGeometry = (
   geometry.setAttribute('aSize', new THREE.BufferAttribute(sizes, 1));
   geometry.setAttribute('aGlyph', new THREE.BufferAttribute(glyphs, 1));
   geometry.setAttribute('aSeed', new THREE.BufferAttribute(seeds, 1));
+  geometry.setAttribute('aIntensity', new THREE.BufferAttribute(intensities, 1));
   geometry.computeBoundingSphere();
   return geometry;
 };
 
+const flowerProfile: ParticleProfile = (x, y, z) => {
+  const dx = (x - FLOWER_CENTER.x) / 2.8;
+  const dy = (y - FLOWER_CENTER.y) / 2.1;
+  const dz = (z - FLOWER_CENTER.z) / 2.8;
+  const core = Math.exp(-(dx * dx + dy * dy + dz * dz) * 1.35);
+  return { sizeScale: 1.10 + core * 0.24, intensity: 1.0 + core * 0.82 };
+};
+
+const galaxyProfile: ParticleProfile = (x, y, z) => {
+  const dx = (x - GALAXY_CENTER.x) / 3.1;
+  const dy = (y - GALAXY_CENTER.y) / 1.05;
+  const dz = (z - GALAXY_CENTER.z) / 2.5;
+  const core = Math.exp(-(dx * dx + dy * dy + dz * dz) * 1.2);
+  return { sizeScale: 1.08 + core * 0.34, intensity: 1.0 + core * 1.18 };
+};
+
+const terrainProfile: ParticleProfile = (x, y, z) => {
+  const ridge = Math.max(0, Math.min(1, (y + 3.15) / 1.25));
+  const person = Math.exp(-(((x + 1.65) / 1.7) ** 2 + ((z - 1.7) / 1.15) ** 2));
+  return { sizeScale: 1.15 + ridge * 0.34 + person * 0.06, intensity: 1.0 + ridge * 0.52 + person * 0.34 };
+};
+
 export const createFlowerGeometry = (data: Float32Array, count: number) =>
-  createStaticGeometry(data, MORPH_STRIDE, count, 0, 6, 12, 14, null, 1906, 0.78);
+  createStaticGeometry(data, MORPH_STRIDE, count, 0, 6, 12, 14, null, 1906, 0.94, flowerProfile);
 
 export const createGalaxyGeometry = (data: Float32Array, count: number) =>
-  createStaticGeometry(data, MORPH_STRIDE, count, 3, 9, 13, null, null, 31415);
+  createStaticGeometry(data, MORPH_STRIDE, count, 3, 9, 13, null, null, 31415, 1.0, galaxyProfile);
 
 export const createTerrainGeometry = (data: Float32Array, count: number) =>
-  createStaticGeometry(data, TERRAIN_STRIDE, count, 0, 3, 6, null, null, 7741);
+  createStaticGeometry(data, TERRAIN_STRIDE, count, 0, 3, 6, null, null, 7741, 1.0, terrainProfile);
 
 export const createStarGeometry = (data: Float32Array, count: number) =>
-  createStaticGeometry(data, STAR_STRIDE, count, 0, 3, 6, 7, 8, 20260909);
+  createStaticGeometry(data, STAR_STRIDE, count, 0, 3, 6, 7, 8, 20260909, 0.96);
 
 export const terrainHeight = (x: number, z: number) =>
   -2.72 - x * 0.018 - x * x * 0.0027 +

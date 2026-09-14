@@ -6,6 +6,7 @@ export type ParticleMaterialOptions = {
   twinkleRate?: number;
   driftStrength?: number;
   intensity?: number;
+  sizeMultiplier?: number;
   additive?: boolean;
 };
 
@@ -15,26 +16,27 @@ uniform float uIntensity;
 varying vec3 vColor;
 varying float vGlyph;
 varying float vTwinkle;
+varying float vIntensity;
 
 void main() {
   vec2 uv = gl_PointCoord - 0.5;
   float radius = length(uv);
-  float circle = 1.0 - smoothstep(0.34, 0.5, radius);
-  float horizontal = (1.0 - smoothstep(0.065, 0.13, abs(uv.y))) *
-    (1.0 - smoothstep(0.34, 0.48, abs(uv.x)));
-  float vertical = (1.0 - smoothstep(0.065, 0.13, abs(uv.x))) *
-    (1.0 - smoothstep(0.34, 0.48, abs(uv.y)));
-  float shape = mix(circle, max(horizontal, vertical), step(0.5, vGlyph));
-  float glow = 1.0 - smoothstep(0.08, 0.5, radius);
+  float core = exp(-18.0 * radius * radius);
+  float halo = exp(-4.8 * radius * radius);
+  float softDisc = (core * 0.80 + halo * 0.20) * (1.0 - smoothstep(0.46, 0.52, radius));
+  float horizontal = exp(-95.0 * uv.y * uv.y) * (1.0 - smoothstep(0.18, 0.49, abs(uv.x)));
+  float vertical = exp(-95.0 * uv.x * uv.x) * (1.0 - smoothstep(0.18, 0.49, abs(uv.y)));
+  float shape = mix(softDisc, max(softDisc * 0.62, max(horizontal, vertical)), step(0.5, vGlyph));
   float alpha = shape * uOpacity * vTwinkle;
-  if (alpha < 0.01) discard;
-  gl_FragColor = vec4(vColor * (1.28 + glow * 0.66) * vTwinkle * uIntensity, alpha);
+  if (alpha < 0.006) discard;
+  gl_FragColor = vec4(vColor * uIntensity * vIntensity * (0.92 + core * 0.50) * vTwinkle, alpha);
 }
 `;
 
 const particleVertex = `
 uniform float uTime;
 uniform float uPixelRatio;
+uniform float uSizeMultiplier;
 uniform float uTwinkleStrength;
 uniform float uTwinkleRate;
 uniform float uDriftStrength;
@@ -42,9 +44,11 @@ attribute vec3 aColor;
 attribute float aSize;
 attribute float aGlyph;
 attribute float aSeed;
+attribute float aIntensity;
 varying vec3 vColor;
 varying float vGlyph;
 varying float vTwinkle;
+varying float vIntensity;
 
 void main() {
   vec3 localPosition = position;
@@ -57,7 +61,7 @@ void main() {
   }
   vec4 mvPosition = modelViewMatrix * vec4(localPosition, 1.0);
   float distanceScale = clamp(10.8 / max(1.0, -mvPosition.z), 0.46, 1.8);
-  gl_PointSize = clamp(aSize * uPixelRatio * distanceScale, 1.0, 8.5 * uPixelRatio);
+  gl_PointSize = clamp(aSize * uSizeMultiplier * uPixelRatio * distanceScale, 1.0, 10.5 * uPixelRatio);
   gl_Position = projectionMatrix * mvPosition;
   float twinkleSpeed = 0.18 + fract(aSeed * 29.17) * 0.14;
   float twinklePhase = aSeed * 125.7 + uTime * uTwinkleRate * twinkleSpeed;
@@ -66,12 +70,15 @@ void main() {
   vTwinkle = 1.0 - uTwinkleStrength * blink;
   vColor = aColor;
   vGlyph = aGlyph;
+  vIntensity = aIntensity;
 }
 `;
 
 const terrainVertex = `
 uniform float uTime;
 uniform float uPixelRatio;
+uniform float uSizeMultiplier;
+uniform float uIntensity;
 uniform vec2 uShadowOrigin;
 uniform vec2 uShadowDir;
 uniform float uShadowLength;
@@ -80,9 +87,11 @@ attribute vec3 aColor;
 attribute float aSize;
 attribute float aGlyph;
 attribute float aSeed;
+attribute float aIntensity;
 varying vec3 vColor;
 varying float vGlyph;
 varying float vTwinkle;
+varying float vIntensity;
 varying float vShadow;
 
 void main() {
@@ -101,11 +110,12 @@ void main() {
 
   vec4 mvPosition = modelViewMatrix * vec4(localPosition, 1.0);
   float distanceScale = clamp(9.8 / max(1.0, -mvPosition.z), 0.46, 1.75);
-  gl_PointSize = clamp(aSize * uPixelRatio * distanceScale, 1.0, 7.0 * uPixelRatio);
+  gl_PointSize = clamp(aSize * uSizeMultiplier * uPixelRatio * distanceScale, 1.0, 9.5 * uPixelRatio);
   gl_Position = projectionMatrix * mvPosition;
   vTwinkle = 1.0;
-  vColor = aColor * (1.0 - vShadow * 0.78);
+  vColor = aColor * uIntensity * aIntensity * (1.0 - vShadow * 0.78);
   vGlyph = aGlyph;
+  vIntensity = aIntensity;
 }
 `;
 
@@ -119,16 +129,12 @@ varying float vShadow;
 void main() {
   vec2 uv = gl_PointCoord - 0.5;
   float radius = length(uv);
-  float circle = 1.0 - smoothstep(0.34, 0.5, radius);
-  float horizontal = (1.0 - smoothstep(0.065, 0.13, abs(uv.y))) *
-    (1.0 - smoothstep(0.34, 0.48, abs(uv.x)));
-  float vertical = (1.0 - smoothstep(0.065, 0.13, abs(uv.x))) *
-    (1.0 - smoothstep(0.34, 0.48, abs(uv.y)));
-  float shape = mix(circle, max(horizontal, vertical), step(0.5, vGlyph));
-  float glow = 1.0 - smoothstep(0.08, 0.5, radius);
-  float alpha = shape * uOpacity * vTwinkle * (1.0 - vShadow * 0.28);
-  if (alpha < 0.01) discard;
-  gl_FragColor = vec4(vColor * (1.38 + glow * 0.48), alpha);
+  float core = exp(-16.0 * radius * radius);
+  float halo = exp(-4.2 * radius * radius);
+  float softDisc = (core * 0.78 + halo * 0.22) * (1.0 - smoothstep(0.46, 0.52, radius));
+  float alpha = softDisc * uOpacity * (1.0 - vShadow * 0.24);
+  if (alpha < 0.006) discard;
+  gl_FragColor = vec4(vColor * (0.96 + core * 0.42), alpha);
 }
 `;
 
@@ -141,6 +147,7 @@ export const createParticleMaterial = (
     uPixelRatio: { value: pixelRatio },
     uOpacity: { value: options.opacity ?? 1 },
     uIntensity: { value: options.intensity ?? 1 },
+    uSizeMultiplier: { value: options.sizeMultiplier ?? 1 },
     uTwinkleStrength: { value: options.twinkleStrength ?? 0.08 },
     uTwinkleRate: { value: options.twinkleRate ?? 0.7 },
     uDriftStrength: { value: options.driftStrength ?? 0 },
@@ -156,11 +163,15 @@ export const createParticleMaterial = (
 export const createTerrainPointMaterial = (
   pixelRatio: number,
   opacity = 1,
+  sizeMultiplier = 1,
+  intensity = 1,
 ) => new THREE.ShaderMaterial({
   uniforms: {
     uTime: { value: 0 },
     uPixelRatio: { value: pixelRatio },
     uOpacity: { value: opacity },
+    uSizeMultiplier: { value: sizeMultiplier },
+    uIntensity: { value: intensity },
     uShadowOrigin: { value: new THREE.Vector2(0, 0) },
     uShadowDir: { value: new THREE.Vector2(-0.6, 0.8).normalize() },
     uShadowLength: { value: 4.8 },
@@ -171,36 +182,6 @@ export const createTerrainPointMaterial = (
   transparent: true,
   depthWrite: false,
   depthTest: true,
-  blending: THREE.NormalBlending,
+  blending: THREE.AdditiveBlending,
 });
 
-export const createGlowMaterial = () => new THREE.ShaderMaterial({
-  uniforms: {
-    uOpacity: { value: 1 },
-    uColor: { value: new THREE.Color(1.35, 0.82, 0.52) },
-  },
-  vertexShader: `
-    varying vec2 vUv;
-    void main() {
-      vUv = uv;
-      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-    }
-  `,
-  fragmentShader: `
-    uniform float uOpacity;
-    uniform vec3 uColor;
-    varying vec2 vUv;
-    void main() {
-      vec2 p = vUv - 0.5;
-      float d = length(p);
-      float halo = 1.0 - smoothstep(0.02, 0.5, d);
-      halo *= halo;
-      gl_FragColor = vec4(uColor, halo * uOpacity * 0.52);
-    }
-  `,
-  transparent: true,
-  depthWrite: false,
-  depthTest: false,
-  blending: THREE.AdditiveBlending,
-  side: THREE.DoubleSide,
-});
