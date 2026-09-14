@@ -9,6 +9,13 @@ export type CursorRepulsionUniforms = {
   uPointerActive: { value: number };
 };
 
+export type ParticleMaterialOptions = {
+  opacity?: number;
+  twinkleStrength?: number;
+  twinkleRate?: number;
+  driftStrength?: number;
+};
+
 export const createCursorRepulsionUniforms = (): CursorRepulsionUniforms => ({
   uPointer: { value: new THREE.Vector2(2, 2) },
   uPointerAspect: { value: window.innerWidth / Math.max(1, window.innerHeight) },
@@ -28,7 +35,6 @@ uniform float uPointerActive;
 
 vec4 repelFromPointer(vec4 clipPosition, float seed) {
   if (uPointerActive <= 0.001 || clipPosition.w <= 0.0) return clipPosition;
-
   vec2 ndc = clipPosition.xy / clipPosition.w;
   vec2 delta = ndc - uPointer;
   vec2 metric = vec2(delta.x * uPointerAspect, delta.y);
@@ -39,12 +45,11 @@ vec4 repelFromPointer(vec4 clipPosition, float seed) {
   vec2 direction = distanceToPointer > 0.0001 ? metric / distanceToPointer : fallback;
   float normalizedDistance = clamp(distanceToPointer / uPointerRadius, 0.0, 1.0);
   float influence = 1.0 - smoothstep(0.0, 1.0, normalizedDistance);
-  float warpPush = influence * uPointerRadius * 0.34;
+  float warpPush = influence * uPointerRadius * 0.28;
   float displacedDistance = max(distanceToPointer + warpPush, uPointerClearRadius);
   float finalDistance = mix(distanceToPointer, displacedDistance, uPointerStrength * uPointerActive);
   vec2 displacedMetric = direction * finalDistance;
   vec2 displacedNdc = uPointer + vec2(displacedMetric.x / uPointerAspect, displacedMetric.y);
-
   clipPosition.xy = displacedNdc * clipPosition.w;
   return clipPosition;
 }
@@ -54,73 +59,7 @@ const pointFragment = `
 uniform float uOpacity;
 varying vec3 vColor;
 varying float vGlyph;
-varying float vShimmer;
-
-void main() {
-  vec2 uv = gl_PointCoord - 0.5;
-  float radius = length(uv);
-  float circle = 1.0 - smoothstep(0.34, 0.5, radius);
-  float horizontal = (1.0 - smoothstep(0.065, 0.13, abs(uv.y))) *
-    (1.0 - smoothstep(0.34, 0.48, abs(uv.x)));
-  float vertical = (1.0 - smoothstep(0.065, 0.13, abs(uv.x))) *
-    (1.0 - smoothstep(0.34, 0.48, abs(uv.y)));
-  float crossShape = max(horizontal, vertical);
-  float shape = mix(circle, crossShape, step(0.5, vGlyph));
-  float glow = 1.0 - smoothstep(0.08, 0.5, radius);
-  float alpha = shape * uOpacity * (0.82 + vShimmer * 0.18);
-
-  if (alpha < 0.01) discard;
-  gl_FragColor = vec4(vColor * (1.0 + glow * 0.16), alpha);
-}
-`;
-const morphVertex = `
-${cursorRepulsionVertex}
-uniform float uMorph;
-uniform float uTime;
-uniform float uPixelRatio;
-attribute vec3 aStart;
-attribute vec3 aMid;
-attribute vec3 aEnd;
-attribute vec3 aColorStart;
-attribute vec3 aColorEnd;
-attribute float aSizeStart;
-attribute float aSizeEnd;
-attribute float aGlyphStart;
-attribute float aGlyphEnd;
-attribute float aSeed;
-varying vec3 vColor;
-varying float vGlyph;
-varying float vShimmer;
-
-void main() {
-  float m = smoothstep(0.0, 1.0, uMorph);
-  vec3 first = mix(aStart, aMid, m);
-  vec3 second = mix(aMid, aEnd, m);
-  vec3 position = mix(first, second, m);
-  float travel = sin(m * 3.14159265);
-  position += vec3(
-    sin(aSeed * 71.3 + uTime * 0.18),
-    cos(aSeed * 53.7 + uTime * 0.15),
-    sin(aSeed * 37.9 + uTime * 0.12)
-  ) * (0.045 * travel);
-  vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-  float distanceScale = clamp(11.5 / max(1.0, -mvPosition.z), 0.48, 1.85);
-  float size = mix(aSizeStart, aSizeEnd, m);
-  gl_PointSize = clamp(size * uPixelRatio * distanceScale, 1.0, 8.5 * uPixelRatio);
-  gl_Position = repelFromPointer(projectionMatrix * mvPosition, aSeed);
-
-  vColor = mix(aColorStart, aColorEnd, m);
-  vGlyph = mix(aGlyphStart, aGlyphEnd, m);
-  vShimmer = 0.5 + 0.5 * sin(aSeed * 79.1 + uTime * 0.7);
-}
-`;
-
-const terrainFragment = `
-uniform float uOpacity;
-varying vec3 vColor;
-varying float vGlyph;
-varying float vShimmer;
-varying float vShadow;
+varying float vTwinkle;
 
 void main() {
   vec2 uv = gl_PointCoord - 0.5;
@@ -132,10 +71,45 @@ void main() {
     (1.0 - smoothstep(0.34, 0.48, abs(uv.y)));
   float shape = mix(circle, max(horizontal, vertical), step(0.5, vGlyph));
   float glow = 1.0 - smoothstep(0.08, 0.5, radius);
-  float shadowFade = 1.0 - vShadow * 0.88;
-  float alpha = shape * uOpacity * (0.82 + vShimmer * 0.18) * (1.0 - vShadow * 0.34);
+  float alpha = shape * uOpacity * vTwinkle;
   if (alpha < 0.01) discard;
-  gl_FragColor = vec4(vColor * shadowFade * (1.0 + glow * 0.14), alpha);
+  gl_FragColor = vec4(vColor * (1.08 + glow * 0.42) * vTwinkle, alpha);
+}
+`;
+
+const particleVertex = `
+${cursorRepulsionVertex}
+uniform float uTime;
+uniform float uPixelRatio;
+uniform float uTwinkleStrength;
+uniform float uTwinkleRate;
+uniform float uDriftStrength;
+attribute vec3 aColor;
+attribute float aSize;
+attribute float aGlyph;
+attribute float aSeed;
+varying vec3 vColor;
+varying float vGlyph;
+varying float vTwinkle;
+
+void main() {
+  vec3 localPosition = position;
+  if (uDriftStrength > 0.0) {
+    localPosition += vec3(
+      sin(aSeed * 71.3 + uTime * 0.17),
+      cos(aSeed * 53.7 + uTime * 0.13),
+      sin(aSeed * 37.9 + uTime * 0.11)
+    ) * uDriftStrength;
+  }
+  vec4 mvPosition = modelViewMatrix * vec4(localPosition, 1.0);
+  float distanceScale = clamp(10.8 / max(1.0, -mvPosition.z), 0.46, 1.8);
+  gl_PointSize = clamp(aSize * uPixelRatio * distanceScale, 1.0, 8.5 * uPixelRatio);
+  gl_Position = repelFromPointer(projectionMatrix * mvPosition, aSeed);
+  float wave = 0.5 + 0.5 * sin(aSeed * 91.7 + uTime * uTwinkleRate);
+  float flare = pow(max(0.0, sin(aSeed * 47.1 + uTime * uTwinkleRate * 0.37)), 14.0);
+  vTwinkle = 1.0 + uTwinkleStrength * ((wave - 0.5) * 0.55 + flare * 0.9);
+  vColor = aColor;
+  vGlyph = aGlyph;
 }
 `;
 
@@ -153,7 +127,7 @@ attribute float aGlyph;
 attribute float aSeed;
 varying vec3 vColor;
 varying float vGlyph;
-varying float vShimmer;
+varying float vTwinkle;
 varying float vShadow;
 
 void main() {
@@ -174,132 +148,108 @@ void main() {
   float distanceScale = clamp(9.8 / max(1.0, -mvPosition.z), 0.46, 1.75);
   gl_PointSize = clamp(aSize * uPixelRatio * distanceScale, 1.0, 7.0 * uPixelRatio);
   gl_Position = repelFromPointer(projectionMatrix * mvPosition, aSeed);
-  vColor = aColor;
+  float shimmer = 0.5 + 0.5 * sin(aSeed * 61.7 + uTime * 0.38);
+  vTwinkle = 0.94 + shimmer * 0.08;
+  vColor = aColor * (1.0 - vShadow * 0.78);
   vGlyph = aGlyph;
-  vShimmer = 0.5 + 0.5 * sin(aSeed * 61.7 + uTime * 0.55);
 }
 `;
 
-const simpleVertex = `
-${cursorRepulsionVertex}
-uniform float uTime;
-uniform float uPixelRatio;
-uniform float uProgress;
-attribute vec3 aColor;
-attribute float aSize;
-attribute float aGlyph;
-attribute float aSeed;
+const terrainFragment = `
+uniform float uOpacity;
 varying vec3 vColor;
 varying float vGlyph;
-varying float vShimmer;
+varying float vTwinkle;
+varying float vShadow;
 
 void main() {
-  vec3 localPosition = position;
-  localPosition.y -= uProgress * (0.44 + aSeed * 0.025);
-  localPosition.z += uProgress * (0.82 + aSeed * 0.04);
-  vec4 mvPosition = modelViewMatrix * vec4(localPosition, 1.0);
-  float distanceScale = clamp(9.8 / max(1.0, -mvPosition.z), 0.46, 1.75);
-  gl_PointSize = clamp(aSize * uPixelRatio * distanceScale, 1.0, 7.0 * uPixelRatio);
-  gl_Position = repelFromPointer(projectionMatrix * mvPosition, aSeed);
-  vColor = aColor;
-  vGlyph = aGlyph;
-  vShimmer = 0.5 + 0.5 * sin(aSeed * 61.7 + uTime * 0.55);
+  vec2 uv = gl_PointCoord - 0.5;
+  float radius = length(uv);
+  float circle = 1.0 - smoothstep(0.34, 0.5, radius);
+  float horizontal = (1.0 - smoothstep(0.065, 0.13, abs(uv.y))) *
+    (1.0 - smoothstep(0.34, 0.48, abs(uv.x)));
+  float vertical = (1.0 - smoothstep(0.065, 0.13, abs(uv.x))) *
+    (1.0 - smoothstep(0.34, 0.48, abs(uv.y)));
+  float shape = mix(circle, max(horizontal, vertical), step(0.5, vGlyph));
+  float glow = 1.0 - smoothstep(0.08, 0.5, radius);
+  float alpha = shape * uOpacity * vTwinkle * (1.0 - vShadow * 0.28);
+  if (alpha < 0.01) discard;
+  gl_FragColor = vec4(vColor * (0.96 + glow * 0.18), alpha);
 }
 `;
 
-export const createMorphMaterial = (
+export const createParticleMaterial = (
   pixelRatio: number,
-  cursorRepulsion: CursorRepulsionUniforms = createCursorRepulsionUniforms(),
-) =>
-  new THREE.ShaderMaterial({
-    uniforms: {
-      ...cursorRepulsion,
-      uMorph: { value: 0 },
-      uTime: { value: 0 },
-      uPixelRatio: { value: pixelRatio },
-      uOpacity: { value: 1 },
-    },
-    vertexShader: morphVertex,
-    fragmentShader: pointFragment,
-    transparent: true,
-    depthWrite: false,
-    depthTest: true,
-    blending: THREE.NormalBlending,
-  });
+  cursorRepulsion: CursorRepulsionUniforms,
+  options: ParticleMaterialOptions = {},
+) => new THREE.ShaderMaterial({
+  uniforms: {
+    ...cursorRepulsion,
+    uTime: { value: 0 },
+    uPixelRatio: { value: pixelRatio },
+    uOpacity: { value: options.opacity ?? 1 },
+    uTwinkleStrength: { value: options.twinkleStrength ?? 0.08 },
+    uTwinkleRate: { value: options.twinkleRate ?? 0.7 },
+    uDriftStrength: { value: options.driftStrength ?? 0 },
+  },
+  vertexShader: particleVertex,
+  fragmentShader: pointFragment,
+  transparent: true,
+  depthWrite: false,
+  depthTest: true,
+  blending: THREE.NormalBlending,
+});
 
 export const createTerrainPointMaterial = (
   pixelRatio: number,
+  cursorRepulsion: CursorRepulsionUniforms,
   opacity = 1,
-  cursorRepulsion: CursorRepulsionUniforms = createCursorRepulsionUniforms(),
-) =>
-  new THREE.ShaderMaterial({
-    uniforms: {
-      ...cursorRepulsion,
-      uTime: { value: 0 },
-      uPixelRatio: { value: pixelRatio },
-      uOpacity: { value: opacity },
-      uShadowOrigin: { value: new THREE.Vector2(0, 0) },
-      uShadowDir: { value: new THREE.Vector2(-0.6, 0.8).normalize() },
-      uShadowLength: { value: 4.8 },
-      uShadowOpacity: { value: 0.86 },
-    },
-    vertexShader: terrainVertex,
-    fragmentShader: terrainFragment,
-    transparent: true,
-    depthWrite: false,
-    depthTest: true,
-    blending: THREE.NormalBlending,
-  });
+) => new THREE.ShaderMaterial({
+  uniforms: {
+    ...cursorRepulsion,
+    uTime: { value: 0 },
+    uPixelRatio: { value: pixelRatio },
+    uOpacity: { value: opacity },
+    uShadowOrigin: { value: new THREE.Vector2(0, 0) },
+    uShadowDir: { value: new THREE.Vector2(-0.6, 0.8).normalize() },
+    uShadowLength: { value: 4.8 },
+    uShadowOpacity: { value: 0.86 },
+  },
+  vertexShader: terrainVertex,
+  fragmentShader: terrainFragment,
+  transparent: true,
+  depthWrite: false,
+  depthTest: true,
+  blending: THREE.NormalBlending,
+});
 
-export const createSimplePointMaterial = (
-  pixelRatio: number,
-  opacity = 1,
-  cursorRepulsion: CursorRepulsionUniforms = createCursorRepulsionUniforms(),
-) =>
-  new THREE.ShaderMaterial({
-    uniforms: {
-      ...cursorRepulsion,
-      uTime: { value: 0 },
-      uPixelRatio: { value: pixelRatio },
-      uProgress: { value: 0 },
-      uOpacity: { value: opacity },
-    },
-    vertexShader: simpleVertex,
-    fragmentShader: pointFragment,
-    transparent: true,
-    depthWrite: false,
-    depthTest: true,
-    blending: THREE.NormalBlending,
-  });
-
-export const createGlowMaterial = () =>
-  new THREE.ShaderMaterial({
-    uniforms: {
-      uOpacity: { value: 1 },
-      uColor: { value: new THREE.Color(1.35, 0.82, 0.52) },
-    },
-    vertexShader: `
-      varying vec2 vUv;
-      void main() {
-        vUv = uv;
-        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-      }
-    `,
-    fragmentShader: `
-      uniform float uOpacity;
-      uniform vec3 uColor;
-      varying vec2 vUv;
-      void main() {
-        vec2 p = vUv - 0.5;
-        float d = length(p);
-        float halo = 1.0 - smoothstep(0.02, 0.5, d);
-        halo *= halo;
-        gl_FragColor = vec4(uColor, halo * uOpacity * 0.3);
-      }
-    `,
-    transparent: true,
-    depthWrite: false,
-    depthTest: true,
-    blending: THREE.AdditiveBlending,
-    side: THREE.DoubleSide,
-  });
+export const createGlowMaterial = () => new THREE.ShaderMaterial({
+  uniforms: {
+    uOpacity: { value: 1 },
+    uColor: { value: new THREE.Color(1.35, 0.82, 0.52) },
+  },
+  vertexShader: `
+    varying vec2 vUv;
+    void main() {
+      vUv = uv;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+  `,
+  fragmentShader: `
+    uniform float uOpacity;
+    uniform vec3 uColor;
+    varying vec2 vUv;
+    void main() {
+      vec2 p = vUv - 0.5;
+      float d = length(p);
+      float halo = 1.0 - smoothstep(0.02, 0.5, d);
+      halo *= halo;
+      gl_FragColor = vec4(uColor, halo * uOpacity * 0.52);
+    }
+  `,
+  transparent: true,
+  depthWrite: false,
+  depthTest: false,
+  blending: THREE.AdditiveBlending,
+  side: THREE.DoubleSide,
+});

@@ -10,7 +10,7 @@
       <p class="hero__lede">Bontr prototype web design</p>
       <button class="hero__cta" type="button" data-explore-cta aria-controls="field">
         <span>Explore Bontr</span>
-        <span class="hero__cta-arrow" aria-hidden="true">→</span>
+        <span class="hero__cta-arrow" aria-hidden="true">&rarr;</span>
       </button>
     </div>
   </section>
@@ -23,7 +23,7 @@
         <span>FIELD OF</span>
         <em>POSSIBILITY</em>
       </h2>
-      <p class="field__lede">Bontr brings together ideas, people and technology to explore what's next — expanding human potential beyond the visible.</p>
+      <p class="field__lede">Bontr brings together ideas, people and technology to explore what's next &mdash; expanding human potential beyond the visible.</p>
     </div>
   </section>
 </div>
@@ -57,10 +57,7 @@
       ease: 'power1.inOut',
       scrollTo: { y: targetY, autoKill: true, onAutoKill: finishExplore },
       overwrite: true,
-      onComplete: () => {
-        history.replaceState(null, '', '#field');
-        finishExplore();
-      },
+      onComplete: finishExplore,
       onInterrupt: finishExplore,
     });
   };

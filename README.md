@@ -1,6 +1,6 @@
 # Bontr Website
 
-A static, immersive landing page for Bontr built with Astro, Three.js, and GSAP.
+A static, immersive Bontr landing page built with Astro, Three.js, and GSAP.
 
 ## Development
 
@@ -9,22 +9,31 @@ npm install
 npm run dev
 ```
 
-## Production build
+## Verification
+
+```bash
+npm run check:scene
+npm run check
+npm run build:pages
+```
+
+## Scene architecture
+
+The hero is a deterministic GPU point-cloud scene. Core artwork is generated ahead of time and shipped as validated binary particle buffers; visitors do not generate the flower, galaxy, terrain, or star field.
+
+- `public/data/home-morph.f32` stores the flower and galaxy particle positions, colors, sizes, and glyph data.
+- `public/data/home-terrain.f32` stores the landscape particle field.
+- `public/data/home-stars.f32` stores the balanced ambient star field.
+- `src/scripts/scene/baked.ts` validates and samples those fixed buffers into Three.js `BufferGeometry`.
+- `src/scripts/scene/materials.ts` adds lightweight runtime effects such as twinkle and cursor displacement without changing the underlying composition.
+- `src/scripts/scene/index.ts` owns the camera path, shooting stars, stable basic-line accents, renderer lifecycle, and context recovery.
+
+The runtime renders directly with `WebGLRenderer`; the composition does not depend on runtime random generation or wide-line post-processing. `?scene-test=1` freezes ambient time and pointer interaction for deterministic visual regression captures.
+
+## Static deployment
 
 ```bash
 npm run build
 ```
 
-The site is intentionally static so the same codebase can deploy to both Vercel and GitHub Pages.
-
-## Scene architecture
-
-The immersive scene is rendered as real GPU point geometry in Three.js. The approved artwork is used offline to derive reference point-cloud data; the browser never displays those reference images as scene layers.
-
-- `public/data/home-morph.f32` stores the sampled 3D flower and galaxy particle targets.
-- `public/data/home-terrain.f32` stores the sampled 3D landscape particles.
-- `src/scripts/scene/generators.ts` turns reference data into `BufferGeometry` and creates ambient procedural geometry.
-- `src/scripts/scene/materials.ts` owns particle shaders, glow materials, shadows, and cursor displacement.
-- `src/scripts/scene/index.ts` composes the scene, camera travel, post-processing, scroll timing, and lifecycle.
-
-The reference data preserves the approved composition while the runtime still owns every particle position, color, size, depth, and interaction state. Geometry generation and GPU materials are kept separate from scene orchestration so additional visual modules can be introduced without changing the reference clouds.
+The same source can deploy to ordinary static hosting or GitHub Pages.

@@ -8,10 +8,12 @@
   },
   "scripts": {
     "dev": "astro dev",
-    "build": "astro build",
-    "build:pages": "cross-env DEPLOY_TARGET=github-pages astro build",
+    "build": "npm run check:scene && astro build",
+    "build:pages": "npm run check:scene && cross-env DEPLOY_TARGET=github-pages astro build",
     "preview": "astro preview",
-    "check": "astro check"
+    "check": "astro check",
+    "check:scene": "node scripts/validate-scene-assets.mjs",
+    "generate:scene": "node scripts/build-scene-data.mjs"
   },
   "dependencies": {
     "astro": "^7.3.2",
