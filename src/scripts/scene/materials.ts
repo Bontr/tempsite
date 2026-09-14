@@ -5,10 +5,13 @@ export type ParticleMaterialOptions = {
   twinkleStrength?: number;
   twinkleRate?: number;
   driftStrength?: number;
+  intensity?: number;
+  additive?: boolean;
 };
 
 const pointFragment = `
 uniform float uOpacity;
+uniform float uIntensity;
 varying vec3 vColor;
 varying float vGlyph;
 varying float vTwinkle;
@@ -25,7 +28,7 @@ void main() {
   float glow = 1.0 - smoothstep(0.08, 0.5, radius);
   float alpha = shape * uOpacity * vTwinkle;
   if (alpha < 0.01) discard;
-  gl_FragColor = vec4(vColor * (1.28 + glow * 0.66) * vTwinkle, alpha);
+  gl_FragColor = vec4(vColor * (1.28 + glow * 0.66) * vTwinkle * uIntensity, alpha);
 }
 `;
 
@@ -124,7 +127,7 @@ void main() {
   float glow = 1.0 - smoothstep(0.08, 0.5, radius);
   float alpha = shape * uOpacity * vTwinkle * (1.0 - vShadow * 0.28);
   if (alpha < 0.01) discard;
-  gl_FragColor = vec4(vColor * (1.10 + glow * 0.24), alpha);
+  gl_FragColor = vec4(vColor * (1.18 + glow * 0.32), alpha);
 }
 `;
 
@@ -136,6 +139,7 @@ export const createParticleMaterial = (
     uTime: { value: 0 },
     uPixelRatio: { value: pixelRatio },
     uOpacity: { value: options.opacity ?? 1 },
+    uIntensity: { value: options.intensity ?? 1 },
     uTwinkleStrength: { value: options.twinkleStrength ?? 0.08 },
     uTwinkleRate: { value: options.twinkleRate ?? 0.7 },
     uDriftStrength: { value: options.driftStrength ?? 0 },
@@ -145,7 +149,7 @@ export const createParticleMaterial = (
   transparent: true,
   depthWrite: false,
   depthTest: true,
-  blending: THREE.NormalBlending,
+  blending: options.additive ? THREE.AdditiveBlending : THREE.NormalBlending,
 });
 
 export const createTerrainPointMaterial = (

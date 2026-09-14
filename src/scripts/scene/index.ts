@@ -100,17 +100,22 @@ const flowerMaterial = createParticleMaterial(initialPixelRatio, {
   opacity: 1.0,
   twinkleStrength: 0.0,
   twinkleRate: 0.0,
+  intensity: 2.05,
+  additive: true,
 });
 const galaxyMaterial = createParticleMaterial(initialPixelRatio, {
-  opacity: 0.99,
+  opacity: 1.0,
   twinkleStrength: 0.0,
   twinkleRate: 0.0,
+  intensity: 1.34,
+  additive: true,
 });
 const starMaterial = createParticleMaterial(initialPixelRatio, {
-  opacity: 0.80,
-  twinkleStrength: 0.0,
-  twinkleRate: 0.0,
+  opacity: 0.86,
+  twinkleStrength: 0.34,
+  twinkleRate: 0.72,
   driftStrength: 0,
+  intensity: 1.08,
 });
 const terrainMaterial = createTerrainPointMaterial(initialPixelRatio, 1.0);
 
@@ -134,7 +139,7 @@ starPoints.frustumCulled = false;
 scene.add(starPoints);
 
 const flowerGlowMaterial = createGlowMaterial();
-const flowerGlow = new THREE.Mesh(new THREE.PlaneGeometry(4.15, 2.75), flowerGlowMaterial);
+const flowerGlow = new THREE.Mesh(new THREE.PlaneGeometry(4.95, 3.42), flowerGlowMaterial);
 flowerGlow.position.copy(FLOWER_CENTER).add(new THREE.Vector3(0.05, 0.08, -0.35));
 scene.add(flowerGlow);
 
@@ -389,7 +394,7 @@ const applyScene = (progress: number, time: number) => {
   camera.lookAt(cameraTarget);
 
   flowerMaterial.uniforms.uTime.value = time;
-  flowerMaterial.uniforms.uOpacity.value = 0.98 * flowerExit;
+  flowerMaterial.uniforms.uOpacity.value = 1.16 * flowerExit;
   flowerPoints.visible = flowerExit > 0.002;
   galaxyMaterial.uniforms.uTime.value = time;
   starMaterial.uniforms.uTime.value = time;
@@ -403,7 +408,7 @@ const applyScene = (progress: number, time: number) => {
   terrainMaterial.uniforms.uShadowLength.value = 4.9;
   terrainMaterial.uniforms.uShadowOpacity.value = 0.94;
 
-  flowerGlowMaterial.uniforms.uOpacity.value = 0.78 * flowerExit;
+  flowerGlowMaterial.uniforms.uOpacity.value = 0.98 * flowerExit;
   flowerGlow.visible = flowerExit > 0.002;
   flowerGlow.quaternion.copy(camera.quaternion);
   galaxyGlowMaterial.uniforms.uOpacity.value = 0.3;
