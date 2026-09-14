@@ -13,6 +13,7 @@ import {
   terrainHeight,
 } from './baked';
 import {
+  createDensityCarrierMaterial,
   createParticleMaterial,
   createTerrainPointMaterial,
 } from './materials';
@@ -119,11 +120,24 @@ const starMaterial = createParticleMaterial(initialPixelRatio, {
   intensity: 1.06,
   sizeMultiplier: 0.98,
 });
-const terrainMaterial = createTerrainPointMaterial(initialPixelRatio, 1.0, 1.10, 1.18);
+const terrainMaterial = createTerrainPointMaterial(initialPixelRatio, 1.0, 1.14, 1.14);
+const flowerCarrierMaterial = createDensityCarrierMaterial(initialPixelRatio, 2.05, 0.082, 0.86);
+const galaxyCarrierMaterial = createDensityCarrierMaterial(initialPixelRatio, 2.20, 0.092, 0.84);
+
+const flowerCarrierPoints = new THREE.Points(flowerGeometry, flowerCarrierMaterial);
+flowerCarrierPoints.frustumCulled = false;
+flowerCarrierPoints.renderOrder = -4;
+scene.add(flowerCarrierPoints);
 
 const flowerPoints = new THREE.Points(flowerGeometry, flowerMaterial);
 flowerPoints.frustumCulled = false;
 scene.add(flowerPoints);
+
+const galaxyCarrierPoints = new THREE.Points(galaxyGeometry, galaxyCarrierMaterial);
+galaxyCarrierPoints.position.y = -worldGap;
+galaxyCarrierPoints.frustumCulled = false;
+galaxyCarrierPoints.renderOrder = -4;
+scene.add(galaxyCarrierPoints);
 
 const galaxyPoints = new THREE.Points(galaxyGeometry, galaxyMaterial);
 galaxyPoints.position.y = -worldGap;
@@ -152,9 +166,9 @@ const silhouetteMaterial = new THREE.MeshBasicMaterial({
 const person = new THREE.Group();
 const personX = -1.65;
 const personZ = 1.7;
-const personBaseScale = 0.80;
+const personBaseScale = 0.58;
 const personGround = terrainHeight(personX, personZ);
-person.position.set(personX, personGround + 0.16, personZ);
+person.position.set(personX, personGround + 0.14, personZ);
 person.scale.setScalar(personBaseScale);
 
 const head = new THREE.Mesh(new THREE.SphereGeometry(0.085, 14, 10), silhouetteMaterial);
@@ -386,7 +400,10 @@ const applyScene = (progress: number, time: number) => {
 
   flowerMaterial.uniforms.uTime.value = time;
   flowerMaterial.uniforms.uOpacity.value = 1.16 * flowerExit;
+  flowerCarrierMaterial.uniforms.uOpacity.value = 0.082 * flowerExit;
   flowerPoints.visible = flowerExit > 0.002;
+  flowerCarrierPoints.visible = flowerExit > 0.002;
+  galaxyCarrierMaterial.uniforms.uOpacity.value = 0.092;
   galaxyMaterial.uniforms.uTime.value = time;
   starMaterial.uniforms.uTime.value = time;
   terrainMaterial.uniforms.uTime.value = time;
@@ -447,7 +464,7 @@ const resize = () => {
   renderer.setSize(width, height, false);
   camera.aspect = width / Math.max(1, height);
   camera.updateProjectionMatrix();
-  [flowerMaterial, galaxyMaterial, starMaterial, terrainMaterial].forEach((material) => {
+  [flowerMaterial, galaxyMaterial, starMaterial, terrainMaterial, flowerCarrierMaterial, galaxyCarrierMaterial].forEach((material) => {
     material.uniforms.uPixelRatio.value = nextPixelRatio;
   });
 };
@@ -501,7 +518,8 @@ window.addEventListener('pagehide', (event) => {
   ScrollTrigger.getAll().forEach((trigger) => trigger.kill());
   [flowerGeometry, galaxyGeometry, terrainGeometry, starGeometry, contactShadowGeometry, travelGeometry]
     .forEach((geometry) => geometry.dispose());
-  [flowerMaterial, galaxyMaterial, terrainMaterial, starMaterial, silhouetteMaterial, contactShadowMaterial, travelMaterial]
+  [flowerMaterial, galaxyMaterial, terrainMaterial, starMaterial, flowerCarrierMaterial, galaxyCarrierMaterial,
+    silhouetteMaterial, contactShadowMaterial, travelMaterial]
     .forEach((material) => material.dispose());
   person.traverse((object) => {
     if (object instanceof THREE.Mesh) object.geometry.dispose();

@@ -138,15 +138,21 @@ const galaxyProfile: ParticleProfile = (x, y, z) => {
 
 const terrainProfile: ParticleProfile = (x, y, z) => {
   const ridge = Math.max(0, Math.min(1, (y + 3.15) / 1.25));
-  const person = Math.exp(-(((x + 1.65) / 1.7) ** 2 + ((z - 1.7) / 1.15) ** 2));
-  return { sizeScale: 1.15 + ridge * 0.34 + person * 0.06, intensity: 1.0 + ridge * 0.52 + person * 0.34 };
+  const px = (x + 1.65) / 1.32;
+  const pz = (z - 1.7) / 0.92;
+  const radius = Math.sqrt(px * px + pz * pz);
+  const silhouettePocket = Math.exp(-radius * radius * 4.6);
+  const rim = Math.exp(-((radius - 0.92) ** 2) / 0.12);
+  const sizeScale = Math.max(0.92, 1.18 + ridge * 0.30 + rim * 0.12 - silhouettePocket * 0.18);
+  const intensity = Math.max(0.72, 1.0 + ridge * 0.44 + rim * 0.62 - silhouettePocket * 0.42);
+  return { sizeScale, intensity };
 };
 
 export const createFlowerGeometry = (data: Float32Array, count: number) =>
-  createStaticGeometry(data, MORPH_STRIDE, count, 0, 6, 12, 14, null, 1906, 0.94, flowerProfile);
+  createStaticGeometry(data, MORPH_STRIDE, count, 0, 6, 12, 14, null, 1906, 1.02, flowerProfile);
 
 export const createGalaxyGeometry = (data: Float32Array, count: number) =>
-  createStaticGeometry(data, MORPH_STRIDE, count, 3, 9, 13, null, null, 31415, 1.0, galaxyProfile);
+  createStaticGeometry(data, MORPH_STRIDE, count, 3, 9, 13, null, null, 31415, 1.04, galaxyProfile);
 
 export const createTerrainGeometry = (data: Float32Array, count: number) =>
   createStaticGeometry(data, TERRAIN_STRIDE, count, 0, 3, 6, null, null, 7741, 1.0, terrainProfile);
