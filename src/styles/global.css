@@ -72,12 +72,8 @@ a {
   object-fit: cover;
   object-position: center;
   background: var(--page);
-  opacity: 0;
-}
-
-.scene[data-scene-state='failed'] .scene__fallback,
-.scene[data-scene-state='lost'] .scene__fallback {
   opacity: 1;
+  filter: brightness(1.28) contrast(1.03) saturate(1.05);
 }
 
 .scene__canvas {
@@ -87,9 +83,12 @@ a {
   transition: none;
 }
 
-.scene__canvas[data-scene-state='ready'] { opacity: 1; }
-.scene__canvas[data-scene-state='lost'],
-.scene__canvas[data-scene-state='failed'] { opacity: 0; }
+.scene[data-webgl-live='true'][data-scene-state='ready'] .scene__canvas { opacity: 1; }
+.scene[data-webgl-live='true'][data-scene-state='ready'] .scene__fallback { opacity: 0; }
+.scene[data-scene-state='failed'] .scene__canvas,
+.scene[data-scene-state='lost'] .scene__canvas { opacity: 0; }
+.scene[data-scene-state='failed'] .scene__fallback,
+.scene[data-scene-state='lost'] .scene__fallback { opacity: 1; }
 
 .scene__vignette {
   position: absolute;

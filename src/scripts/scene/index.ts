@@ -39,7 +39,7 @@ const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').match
 const quality = getSceneQuality();
 const mobile = window.innerWidth < 720;
 const worldGap = mobile ? 17.5 : 15;
-const initialPixelRatio = Math.min(window.devicePixelRatio || 1, mobile ? 1.15 : 1.45);
+const initialPixelRatio = Math.min(window.devicePixelRatio || 1, mobile ? 1.1 : 1.25);
 
 history.scrollRestoration = 'manual';
 if (window.location.hash) {
@@ -48,7 +48,15 @@ if (window.location.hash) {
 window.scrollTo(0, 0);
 window.addEventListener('pageshow', () => window.scrollTo(0, 0), { once: true });
 
+let sceneReady = false;
+let sceneDisabled = false;
+
+const setWebglLive = (live: boolean) => {
+  if (sceneRoot) sceneRoot.dataset.webglLive = live ? 'true' : 'false';
+};
+
 const initializeScene = async () => {
+  setWebglLive(false);
   setSceneState('loading');
   let renderer: THREE.WebGLRenderer;
 try {
@@ -76,7 +84,7 @@ renderer.setPixelRatio(initialPixelRatio);
 renderer.setSize(window.innerWidth, window.innerHeight, false);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.48;
+renderer.toneMappingExposure = 1.60;
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x020202);
@@ -362,6 +370,8 @@ const cameraTarget = new THREE.Vector3();
 
 const applyScene = (progress: number, time: number) => {
   const p = clamp01(progress);
+  const shouldPresentWebgl = sceneReady && !sceneDisabled && (testMode || captureMode || p > 0.015);
+  setWebglLive(shouldPresentWebgl);
   const travelPulse = Math.sin(p * Math.PI);
   const flowerExit = 1 - THREE.MathUtils.smoothstep(p, 0.18, 0.4);
   const landscapeExit = 1 - THREE.MathUtils.smoothstep(p, 0.24, 0.43);
@@ -443,7 +453,7 @@ if (reduceMotion || testMode) {
 const resize = () => {
   const width = window.innerWidth;
   const height = window.innerHeight;
-  const nextPixelRatio = Math.min(window.devicePixelRatio || 1, width < 720 ? 1.15 : 1.45);
+  const nextPixelRatio = Math.min(window.devicePixelRatio || 1, width < 720 ? 1.1 : 1.25);
   renderer.setPixelRatio(nextPixelRatio);
   renderer.setSize(width, height, false);
   camera.aspect = width / Math.max(1, height);
@@ -461,13 +471,18 @@ const startRendering = async () => {
   try {
     renderer.compile(scene, camera);
     renderer.render(scene, camera);
-    renderer.getContext().finish();
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
     renderer.render(scene, camera);
-    renderer.getContext().finish();
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    renderer.render(scene, camera);
+    sceneReady = true;
     setSceneState('ready');
+    setWebglLive(testMode || captureMode || scrollState.progress > 0.015);
   } catch (error) {
     console.error('Bontr scene shader preparation failed.', error);
+    sceneDisabled = true;
+    sceneReady = false;
+    setWebglLive(false);
     setSceneState('failed');
     return;
   }
@@ -483,18 +498,17 @@ const startRendering = async () => {
 };
 void startRendering();
 
-canvas.addEventListener('webglcontextlost', (event) => {
-  event.preventDefault();
-  setSceneState('lost');
+canvas.addEventListener('webglcontextlost', () => {
+  sceneDisabled = true;
+  sceneReady = false;
+  setWebglLive(false);
+  setSceneState('failed');
   renderer.setAnimationLoop(null);
-});
-canvas.addEventListener('webglcontextrestored', () => {
-  setSceneState('loading');
-  void startRendering();
 });
 
-window.addEventListener('pagehide', () => {
+window.addEventListener('pagehide', (event) => {
   renderer.setAnimationLoop(null);
+  if (event.persisted) return;
   ScrollTrigger.getAll().forEach((trigger) => trigger.kill());
   [flowerGeometry, galaxyGeometry, terrainGeometry, starGeometry, contactShadowGeometry, travelGeometry]
     .forEach((geometry) => geometry.dispose());
