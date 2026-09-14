@@ -36,7 +36,7 @@ const lerp = (a, b, t) => a + (b - a) * t;
 sampleRows('source-data/home-morph.source.f32', 'public/data/home-morph.f32', 15, 90000);
 sampleRows('source-data/home-terrain.source.f32', 'public/data/home-terrain.f32', 7, 46000);
 
-const starCount = 30000;
+const starCount = 45000;
 const stride = 9;
 const stars = new Float32Array(starCount * stride);
 const cool = [0.72, 0.78, 0.84];
@@ -56,7 +56,7 @@ for (let index = 0; index < starCount; index += 1) {
   stars[offset + 3] = lerp(cool[0], warm[0], warmth) * brightness;
   stars[offset + 4] = lerp(cool[1], warm[1], warmth) * brightness;
   stars[offset + 5] = lerp(cool[2], warm[2], warmth) * brightness;
-  stars[offset + 6] = 0.30 + hash01(index, 23) * 0.56 + (hash01(index, 24) < 0.012 ? 1.25 : 0);
+  stars[offset + 6] = 0.22 + hash01(index, 23) * 0.50 + (hash01(index, 24) < 0.010 ? 1.15 : 0);
   stars[offset + 7] = hash01(index, 25) < 0.008 ? 1 : 0;
   stars[offset + 8] = seed;
 }

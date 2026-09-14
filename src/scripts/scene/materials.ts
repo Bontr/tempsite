@@ -25,7 +25,7 @@ void main() {
   float glow = 1.0 - smoothstep(0.08, 0.5, radius);
   float alpha = shape * uOpacity * vTwinkle;
   if (alpha < 0.01) discard;
-  gl_FragColor = vec4(vColor * (1.08 + glow * 0.42) * vTwinkle, alpha);
+  gl_FragColor = vec4(vColor * (1.28 + glow * 0.66) * vTwinkle, alpha);
 }
 `;
 
@@ -57,8 +57,9 @@ void main() {
   gl_PointSize = clamp(aSize * uPixelRatio * distanceScale, 1.0, 8.5 * uPixelRatio);
   gl_Position = projectionMatrix * mvPosition;
   float wave = 0.5 + 0.5 * sin(aSeed * 91.7 + uTime * uTwinkleRate);
-  float flare = pow(max(0.0, sin(aSeed * 47.1 + uTime * uTwinkleRate * 0.37)), 14.0);
-  vTwinkle = 1.0 + uTwinkleStrength * ((wave - 0.5) * 0.55 + flare * 0.9);
+  float flare = pow(max(0.0, sin(aSeed * 47.1 + uTime * uTwinkleRate * 0.37)), 18.0);
+  float twinkleMask = max(step(0.97, aSeed), step(0.5, aGlyph));
+  vTwinkle = 1.0 + twinkleMask * uTwinkleStrength * ((wave - 0.5) * 0.28 + flare * 0.72);
   vColor = aColor;
   vGlyph = aGlyph;
 }
@@ -123,7 +124,7 @@ void main() {
   float glow = 1.0 - smoothstep(0.08, 0.5, radius);
   float alpha = shape * uOpacity * vTwinkle * (1.0 - vShadow * 0.28);
   if (alpha < 0.01) discard;
-  gl_FragColor = vec4(vColor * (0.96 + glow * 0.18), alpha);
+  gl_FragColor = vec4(vColor * (1.10 + glow * 0.24), alpha);
 }
 `;
 

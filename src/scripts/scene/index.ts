@@ -27,6 +27,8 @@ if (!canvas || !home) throw new Error('Bontr scene mount was not found.');
 
 const sceneParams = new URLSearchParams(window.location.search);
 const testMode = sceneParams.has('scene-test');
+const captureMode = sceneParams.has('scene-capture');
+if (captureMode) document.documentElement.classList.add('scene-capture');
 const requestedTestProgress = Number(sceneParams.get('scene-progress'));
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const quality = getSceneQuality();
@@ -55,7 +57,7 @@ renderer.setPixelRatio(initialPixelRatio);
 renderer.setSize(window.innerWidth, window.innerHeight, false);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.30;
+renderer.toneMappingExposure = 1.48;
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x020202);
@@ -78,9 +80,9 @@ const galaxyMaterial = createParticleMaterial(initialPixelRatio, {
   twinkleRate: 0.0,
 });
 const starMaterial = createParticleMaterial(initialPixelRatio, {
-  opacity: 0.68,
-  twinkleStrength: 0.44,
-  twinkleRate: 0.95,
+  opacity: 0.80,
+  twinkleStrength: 0.62,
+  twinkleRate: 0.90,
   driftStrength: 0,
 });
 const terrainMaterial = createTerrainPointMaterial(initialPixelRatio, 1.0);
@@ -372,7 +374,7 @@ const applyScene = (progress: number, time: number) => {
   terrainMaterial.uniforms.uShadowLength.value = 4.9;
   terrainMaterial.uniforms.uShadowOpacity.value = 0.94;
 
-  flowerGlowMaterial.uniforms.uOpacity.value = 0.62 * flowerExit;
+  flowerGlowMaterial.uniforms.uOpacity.value = 0.78 * flowerExit;
   flowerGlow.visible = flowerExit > 0.002;
   flowerGlow.quaternion.copy(camera.quaternion);
   galaxyGlowMaterial.uniforms.uOpacity.value = 0.3;
@@ -435,17 +437,28 @@ window.addEventListener('resize', resize, { passive: true });
 resize();
 ScrollTrigger.refresh();
 
-let firstFrame = true;
-const startedAt = performance.now();
-renderer.setAnimationLoop((timeMs) => {
-  const elapsed = reduceMotion || testMode ? 0 : (timeMs - startedAt) * 0.001;
-  applyScene(scrollState.progress, elapsed);
-  renderer.render(scene, camera);
-  if (firstFrame) {
-    firstFrame = false;
+const startRendering = async () => {
+  applyScene(scrollState.progress, 0);
+  try {
+    await renderer.compileAsync(scene, camera);
+    renderer.render(scene, camera);
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    renderer.render(scene, camera);
     canvas.dataset.sceneState = 'ready';
+  } catch (error) {
+    console.error('Bontr scene shader preparation failed.', error);
+    canvas.dataset.sceneState = 'failed';
+    return;
   }
-});
+
+  const startedAt = performance.now();
+  renderer.setAnimationLoop((timeMs) => {
+    const elapsed = reduceMotion || testMode ? 0 : Math.max(0, (timeMs - startedAt) * 0.001);
+    applyScene(scrollState.progress, elapsed);
+    renderer.render(scene, camera);
+  });
+};
+void startRendering();
 
 canvas.addEventListener('webglcontextlost', (event) => {
   event.preventDefault();

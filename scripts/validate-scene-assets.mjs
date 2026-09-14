@@ -3,7 +3,7 @@ import fs from 'node:fs';
 const assets = [
   { path: 'public/data/home-morph.f32', stride: 15, rows: 90000 },
   { path: 'public/data/home-terrain.f32', stride: 7, rows: 46000 },
-  { path: 'public/data/home-stars.f32', stride: 9, rows: 30000 },
+  { path: 'public/data/home-stars.f32', stride: 9, rows: 45000 },
 ];
 
 for (const asset of assets) {
