@@ -7,6 +7,8 @@ import {
   createFlowerGeometry,
   createGalaxyGeometry,
   createGalaxyFillGeometry,
+  createFlowerBloomGeometry,
+  createGalaxyBloomGeometry,
   createTerrainGeometry,
   getSceneQuality,
   loadBakedSceneData,
@@ -14,6 +16,7 @@ import {
 } from './baked';
 import {
   createParticleMaterial,
+  createDensityBloomMaterial,
   createTerrainPointMaterial,
 } from './materials';
 
@@ -103,8 +106,12 @@ const camera = new THREE.PerspectiveCamera(mobile ? 52 : 44, window.innerWidth /
 
 const flowerGeometry = createFlowerGeometry(morph, quality.morphCount);
 const galaxyGeometry = createGalaxyGeometry(morph, quality.morphCount);
-const galaxyFillCount = mobile ? Math.min(20000, quality.morphCount) : Math.min(65000, quality.morphCount);
+const galaxyFillCount = mobile ? Math.min(28000, quality.morphCount) : Math.min(90000, quality.morphCount);
 const galaxyFillGeometry = createGalaxyFillGeometry(morph, galaxyFillCount);
+const flowerBloomCount = mobile ? 2600 : 6200;
+const galaxyBloomCount = mobile ? 3200 : 7600;
+const flowerBloomGeometry = createFlowerBloomGeometry(morph, flowerBloomCount);
+const galaxyBloomGeometry = createGalaxyBloomGeometry(morph, galaxyBloomCount);
 const terrainGeometry = createTerrainGeometry(terrain, quality.terrainCount);
 const starGeometry = createStarGeometry(stars, quality.starCount);
 
@@ -113,43 +120,58 @@ const flowerMaterial = createParticleMaterial(initialPixelRatio, {
   opacity: 1.0,
   twinkleStrength: 0.0,
   twinkleRate: 0.0,
-  intensity: 2.62,
-  sizeMultiplier: 1.20,
-  densityBloom: 0.96,
-  densityWarmth: 0.50,
+  intensity: 2.28,
+  sizeMultiplier: 1.30,
+  densityBloom: 0.58,
+  densityWarmth: 0.46,
+  minPixelSize: 0.70,
+  maxPixelSize: 18.0,
   additive: true,
 });
 const galaxyMaterial = createParticleMaterial(initialPixelRatio, {
   opacity: 1.0,
   twinkleStrength: 0.0,
   twinkleRate: 0.0,
-  intensity: 2.03,
-  sizeMultiplier: 1.15,
-  densityBloom: 1.12,
-  densityWarmth: 0.12,
+  intensity: 1.88,
+  sizeMultiplier: 1.26,
+  densityBloom: 0.66,
+  densityWarmth: 0.14,
+  minPixelSize: 0.70,
+  maxPixelSize: 18.0,
   additive: true,
 });
 const galaxyFillMaterial = createParticleMaterial(initialPixelRatio, {
-  opacity: 0.48,
+  opacity: 0.58,
   twinkleStrength: 0.0,
   twinkleRate: 0.0,
-  intensity: 1.42,
-  sizeMultiplier: 1.10,
-  densityBloom: 0.18,
+  intensity: 1.50,
+  sizeMultiplier: 1.20,
+  densityBloom: 0.20,
   densityWarmth: 0.10,
+  minPixelSize: 0.62,
+  maxPixelSize: 16.0,
   additive: true,
 });
 const starMaterial = createParticleMaterial(initialPixelRatio, {
-  opacity: 0.82,
-  twinkleStrength: 0.99,
-  twinkleRate: 1.25,
+  opacity: 0.90,
+  twinkleStrength: 1.0,
+  twinkleRate: 1.35,
   driftStrength: 0,
-  intensity: 1.12,
-  sizeMultiplier: 1.08,
+  intensity: 1.18,
+  sizeMultiplier: 1.18,
   densityBloom: 0.0,
   densityWarmth: 0.0,
+  minPixelSize: 0.66,
+  maxPixelSize: 13.0,
 });
-const terrainMaterial = createTerrainPointMaterial(initialPixelRatio, 1.0, 1.10, 0.88);
+const terrainMaterial = createTerrainPointMaterial(initialPixelRatio, 1.0, 1.30, 1.10);
+const flowerBloomMaterial = createDensityBloomMaterial(0.045, 0.86, 2.2, 0.78);
+const galaxyBloomMaterial = createDensityBloomMaterial(0.040, 0.82, 2.0, 0.22);
+
+const flowerBloomPoints = new THREE.Mesh(flowerBloomGeometry, flowerBloomMaterial);
+flowerBloomPoints.frustumCulled = false;
+flowerBloomPoints.renderOrder = -4;
+scene.add(flowerBloomPoints);
 
 const flowerPoints = new THREE.Mesh(flowerGeometry, flowerMaterial);
 flowerPoints.frustumCulled = false;
@@ -160,6 +182,12 @@ galaxyFillPoints.position.y = -worldGap;
 galaxyFillPoints.frustumCulled = false;
 galaxyFillPoints.renderOrder = -3;
 scene.add(galaxyFillPoints);
+
+const galaxyBloomPoints = new THREE.Mesh(galaxyBloomGeometry, galaxyBloomMaterial);
+galaxyBloomPoints.position.y = -worldGap;
+galaxyBloomPoints.frustumCulled = false;
+galaxyBloomPoints.renderOrder = -4;
+scene.add(galaxyBloomPoints);
 
 const galaxyPoints = new THREE.Mesh(galaxyGeometry, galaxyMaterial);
 galaxyPoints.position.y = -worldGap;
@@ -178,8 +206,10 @@ starPoints.renderOrder = -20;
 scene.add(starPoints);
 
 
-const silhouetteMaterial = new THREE.MeshBasicMaterial({
-  color: 0x000000,
+const personMaterial = new THREE.MeshStandardMaterial({
+  color: 0x24170f,
+  roughness: 0.86,
+  metalness: 0.0,
   transparent: true,
   opacity: 1,
   depthWrite: false,
@@ -193,65 +223,54 @@ const personGround = terrainHeight(personX, personZ);
 person.position.set(personX, personGround + 0.14, personZ);
 person.scale.setScalar(personBaseScale);
 
-const head = new THREE.Mesh(new THREE.SphereGeometry(0.085, 14, 10), silhouetteMaterial);
-head.position.y = 0.73;
-person.add(head);
-const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.11, 0.36, 8), silhouetteMaterial);
-torso.position.y = 0.48;
-person.add(torso);
-const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.040, 0.075, 7), silhouetteMaterial);
-neck.position.y = 0.655;
-person.add(neck);
-const shoulders = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.032, 0.235, 7), silhouetteMaterial);
-shoulders.position.y = 0.585;
-shoulders.rotation.z = Math.PI / 2;
-person.add(shoulders);
-const pelvis = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 6), silhouetteMaterial);
-pelvis.position.y = 0.315;
-pelvis.scale.set(1.0, 0.58, 0.72);
-person.add(pelvis);
-
-const addLimb = (x: number, y: number, rotation: number, length: number, radius: number) => {
-  const limb = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, length, 6), silhouetteMaterial);
-  limb.position.set(x, y, 0);
-  limb.rotation.z = rotation;
-  person.add(limb);
+const addBodySegment = (start: THREE.Vector3, end: THREE.Vector3, topRadius: number, bottomRadius = topRadius) => {
+  const mesh = new THREE.Mesh(new THREE.CylinderGeometry(topRadius, bottomRadius, start.distanceTo(end), 10), personMaterial);
+  mesh.position.copy(start).add(end).multiplyScalar(0.5);
+  mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), end.clone().sub(start).normalize());
+  person.add(mesh);
+  return mesh;
 };
-addLimb(-0.08, 0.2, 0.08, 0.42, 0.026);
-addLimb(0.08, 0.2, -0.08, 0.42, 0.026);
-addLimb(-0.1, 0.49, -0.18, 0.34, 0.024);
-addLimb(0.1, 0.49, 0.18, 0.34, 0.024);
-const leftFoot = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.035, 0.13), silhouetteMaterial);
-leftFoot.position.set(-0.075, -0.015, -0.025);
+const head = new THREE.Mesh(new THREE.SphereGeometry(0.082, 16, 12), personMaterial);
+head.position.set(0, 0.77, 0);
+head.scale.set(0.90, 1.08, 0.90);
+person.add(head);
+addBodySegment(new THREE.Vector3(0, 0.655, 0), new THREE.Vector3(0, 0.705, 0), 0.034, 0.038);
+const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.125, 0.082, 0.285, 12), personMaterial);
+torso.position.y = 0.505;
+torso.scale.z = 0.62;
+person.add(torso);
+const pelvis = new THREE.Mesh(new THREE.SphereGeometry(0.09, 10, 8), personMaterial);
+pelvis.position.y = 0.335;
+pelvis.scale.set(1.0, 0.55, 0.68);
+person.add(pelvis);
+addBodySegment(new THREE.Vector3(-0.108, 0.585, 0), new THREE.Vector3(-0.125, 0.455, 0.012), 0.028, 0.024);
+addBodySegment(new THREE.Vector3(-0.125, 0.455, 0.012), new THREE.Vector3(-0.108, 0.325, 0.030), 0.024, 0.020);
+addBodySegment(new THREE.Vector3(0.108, 0.585, 0), new THREE.Vector3(0.125, 0.452, -0.008), 0.028, 0.024);
+addBodySegment(new THREE.Vector3(0.125, 0.452, -0.008), new THREE.Vector3(0.102, 0.323, 0.020), 0.024, 0.020);
+const leftHand = new THREE.Mesh(new THREE.SphereGeometry(0.024, 8, 6), personMaterial);
+leftHand.position.set(-0.108, 0.306, 0.032);
+person.add(leftHand);
+const rightHand = leftHand.clone();
+rightHand.position.set(0.102, 0.304, 0.022);
+person.add(rightHand);
+addBodySegment(new THREE.Vector3(-0.052, 0.302, 0), new THREE.Vector3(-0.060, 0.160, 0.018), 0.040, 0.034);
+addBodySegment(new THREE.Vector3(-0.060, 0.160, 0.018), new THREE.Vector3(-0.072, 0.020, -0.004), 0.034, 0.027);
+addBodySegment(new THREE.Vector3(0.052, 0.302, 0), new THREE.Vector3(0.064, 0.155, -0.010), 0.040, 0.034);
+addBodySegment(new THREE.Vector3(0.064, 0.155, -0.010), new THREE.Vector3(0.078, 0.020, 0.004), 0.034, 0.027);
+const leftFoot = new THREE.Mesh(new THREE.BoxGeometry(0.065, 0.035, 0.13), personMaterial);
+leftFoot.position.set(-0.072, -0.004, -0.035);
 person.add(leftFoot);
 const rightFoot = leftFoot.clone();
-rightFoot.position.x = 0.075;
+rightFoot.position.x = 0.078;
 person.add(rightFoot);
-
-const personRimMaterial = new THREE.MeshBasicMaterial({
-  color: 0xffc178,
-  transparent: true,
-  opacity: 0.55,
-  depthWrite: false,
-  depthTest: false,
-  side: THREE.DoubleSide,
-  blending: THREE.AdditiveBlending,
-});
-const personRim = person.clone(true);
-personRim.traverse((object) => {
-  if (!(object instanceof THREE.Mesh)) return;
-  object.material = personRimMaterial;
-  object.renderOrder = 19;
-});
-personRim.position.x += 0.035;
-personRim.position.y += 0.006;
-personRim.position.z -= 0.008;
-foreground.add(personRim);
-person.traverse((object) => {
-  if (object instanceof THREE.Mesh) object.renderOrder = 20;
-});
+person.traverse((object) => { if (object instanceof THREE.Mesh) object.renderOrder = 20; });
 foreground.add(person);
 
+const personAmbient = new THREE.AmbientLight(0x1a1410, 0.24);
+const personKeyLight = new THREE.DirectionalLight(0xffad62, 7.0);
+personKeyLight.position.copy(FLOWER_CENTER).add(new THREE.Vector3(1.8, 2.6, -0.8));
+personKeyLight.target.position.set(personX, personGround + 0.42, personZ);
+scene.add(personAmbient, personKeyLight, personKeyLight.target);
 
 const contactShadowMaterial = new THREE.ShaderMaterial({
   transparent: true,
@@ -277,7 +296,7 @@ const createOrbit = (
   rotationZ: number,
   opacity: number,
 ) => {
-  const count = 680;
+  const count = 1200;
   const offsets = new Float32Array(count * 3);
   const colors = new Float32Array(count * 3);
   const params = new Float32Array(count * 3);
@@ -295,7 +314,7 @@ const createOrbit = (
     const target = index * 3;
     offsets.set([center.x + xSpun, center.y + ySpun, center.z + zTilted], target);
     colors.set([1.0, 0.48 + seed * 0.14, 0.20 + seed * 0.08], target);
-    params.set([0.18 + seed * 0.08, seed, 1.0], target);
+    params.set([0.095 + seed * 0.045, seed, 1.0], target);
   }
   const geometry = new THREE.InstancedBufferGeometry();
   geometry.setAttribute('position', new THREE.Float32BufferAttribute([-0.5,-0.5,0, 0.5,-0.5,0, 0.5,0.5,0, -0.5,0.5,0], 3));
@@ -306,8 +325,9 @@ const createOrbit = (
   geometry.setAttribute('aParams', new THREE.InstancedBufferAttribute(params, 3));
   geometry.instanceCount = count;
   const material = createParticleMaterial(initialPixelRatio, {
-    opacity, twinkleStrength: 0, twinkleRate: 0, intensity: 1.28,
-    sizeMultiplier: 0.36, densityBloom: 0, densityWarmth: 0, additive: true,
+    opacity, twinkleStrength: 0, twinkleRate: 0, intensity: 1.18,
+    sizeMultiplier: 0.24, densityBloom: 0, densityWarmth: 0,
+    minPixelSize: 0.18, maxPixelSize: 1.8, additive: true,
   });
   const line = new THREE.Mesh(geometry, material);
   line.frustumCulled = false;
@@ -315,8 +335,8 @@ const createOrbit = (
   return { line, material };
 };
 
-const flowerOrbitA = createOrbit(FLOWER_CENTER, 5.4, 1.3, 62, -6, 0.18);
-const flowerOrbitB = createOrbit(FLOWER_CENTER, 4.2, 1.02, -55, 22, 0.08);
+const flowerOrbitA = createOrbit(FLOWER_CENTER, 5.4, 1.3, 62, -6, 0.15);
+const flowerOrbitB = createOrbit(FLOWER_CENTER, 4.2, 1.02, -55, 22, 0.055);
 
 const makeRng = (seed: number) => {
   let state = seed >>> 0;
@@ -466,12 +486,14 @@ const applyScene = (progress: number, time: number) => {
   camera.lookAt(cameraTarget);
 
   flowerMaterial.uniforms.uTime.value = time;
-  flowerMaterial.uniforms.uOpacity.value = 1.16 * flowerExit;
+  flowerMaterial.uniforms.uOpacity.value = 1.10 * flowerExit;
+  flowerBloomMaterial.uniforms.uOpacity.value = 0.045 * flowerExit;
   flowerPoints.visible = flowerExit > 0.002;
+  flowerBloomPoints.visible = flowerExit > 0.002;
   galaxyMaterial.uniforms.uTime.value = time;
   galaxyFillMaterial.uniforms.uTime.value = time;
   starMaterial.uniforms.uTime.value = time;
-  terrainMaterial.uniforms.uOpacity.value = 0.88 * landscapeExit;
+  terrainMaterial.uniforms.uOpacity.value = 0.94 * landscapeExit;
   foreground.visible = landscapeExit > 0.002;
 
   const shadowDirection = terrainMaterial.uniforms.uShadowDir.value as THREE.Vector2;
@@ -480,12 +502,13 @@ const applyScene = (progress: number, time: number) => {
   terrainMaterial.uniforms.uShadowLength.value = 4.9;
   terrainMaterial.uniforms.uShadowOpacity.value = 0.38;
 
-  silhouetteMaterial.opacity = landscapeExit;
-  personRimMaterial.opacity = 0.55 * landscapeExit;
-  contactShadowMaterial.uniforms.uOpacity.value = 0.10 * landscapeExit;
+  personMaterial.opacity = landscapeExit;
+  personKeyLight.intensity = 7.0 * landscapeExit;
+  personAmbient.intensity = 0.24 * landscapeExit;
+  contactShadowMaterial.uniforms.uOpacity.value = 0.06 * landscapeExit;
 
-  flowerOrbitA.material.uniforms.uOpacity.value = 0.22 * flowerExit;
-  flowerOrbitB.material.uniforms.uOpacity.value = 0.08 * flowerExit;
+  flowerOrbitA.material.uniforms.uOpacity.value = 0.15 * flowerExit;
+  flowerOrbitB.material.uniforms.uOpacity.value = 0.055 * flowerExit;
   flowerOrbitA.line.visible = flowerExit > 0.002;
   flowerOrbitB.line.visible = flowerExit > 0.002;
    travelMaterial.opacity = 0.005 + travelPulse * 0.009;
@@ -528,7 +551,7 @@ const resize = () => {
   camera.aspect = width / Math.max(1, height);
   camera.updateProjectionMatrix();
   [flowerMaterial, galaxyMaterial, galaxyFillMaterial, starMaterial, terrainMaterial,
-    flowerOrbitA.material, flowerOrbitB.material]
+    flowerBloomMaterial, galaxyBloomMaterial, flowerOrbitA.material, flowerOrbitB.material]
     .forEach((material) => material.uniforms.uViewport.value.set(width, height));
 };
 window.addEventListener('resize', resize, { passive: true });
@@ -543,7 +566,7 @@ const startRendering = async () => {
 
     // Do not expose the canvas until every queued instanced-particle draw has completed.
     renderer.getContext().finish();
-    const expectedParticleTriangles = (quality.morphCount * 2 + galaxyFillCount + quality.terrainCount + quality.starCount) * 2;
+    const expectedParticleTriangles = (quality.morphCount * 2 + galaxyFillCount + quality.terrainCount + quality.starCount + flowerBloomCount + galaxyBloomCount) * 2;
     if (renderer.info.render.triangles < expectedParticleTriangles) {
       throw new Error(`Incomplete startup frame: ${renderer.info.render.triangles}/${expectedParticleTriangles} particle triangles rendered.`);
     }
@@ -587,10 +610,10 @@ window.addEventListener('pagehide', (event) => {
   renderer.setAnimationLoop(null);
   if (event.persisted) return;
   ScrollTrigger.getAll().forEach((trigger) => trigger.kill());
-  [flowerGeometry, galaxyGeometry, galaxyFillGeometry, terrainGeometry, starGeometry, contactShadowGeometry, travelGeometry]
+  [flowerGeometry, galaxyGeometry, galaxyFillGeometry, flowerBloomGeometry, galaxyBloomGeometry, terrainGeometry, starGeometry, contactShadowGeometry, travelGeometry]
     .forEach((geometry) => geometry.dispose());
-  [flowerMaterial, galaxyMaterial, galaxyFillMaterial, terrainMaterial, starMaterial,
-    silhouetteMaterial, personRimMaterial, contactShadowMaterial, travelMaterial]
+  [flowerMaterial, galaxyMaterial, galaxyFillMaterial, flowerBloomMaterial, galaxyBloomMaterial, terrainMaterial, starMaterial,
+    personMaterial, contactShadowMaterial, travelMaterial]
     .forEach((material) => material.dispose());
   person.traverse((object) => {
     if (object instanceof THREE.Mesh) object.geometry.dispose();

@@ -9,6 +9,8 @@ export type ParticleMaterialOptions = {
   sizeMultiplier?: number;
   densityBloom?: number;
   densityWarmth?: number;
+  minPixelSize?: number;
+  maxPixelSize?: number;
   additive?: boolean;
 };
 
@@ -21,6 +23,7 @@ varying vec2 vUv;
 varying vec3 vColor;
 varying float vTwinkle;
 varying float vIntensity;
+varying float vFlash;
 
 void main() {
   vec2 p = vUv - 0.5;
@@ -32,10 +35,11 @@ void main() {
   float shape = (core * 0.90 + halo * 0.15) * (1.0 - smoothstep(0.47, 0.515, radius));
   float alpha = shape * uOpacity * vTwinkle;
   if (alpha < 0.003) discard;
-  vec3 warmTarget = vec3(1.0, 0.72, 0.38);
+  vec3 warmTarget = vec3(1.0, 0.68, 0.30);
   vec3 litColor = mix(vColor, warmTarget, density * uDensityWarmth);
-  float densityCompression = mix(1.0, 0.48, density);
-  gl_FragColor = vec4(litColor * uIntensity * densityCompression * (0.98 + core * 0.24 + halo * 0.05) * vTwinkle, alpha);
+  litColor = mix(litColor, vec3(1.0), clamp(vFlash * 0.82, 0.0, 0.82));
+  float densityCompression = mix(1.0, 0.40, density);
+  gl_FragColor = vec4(litColor * uIntensity * densityCompression * (0.98 + core * 0.22 + halo * 0.04) * vTwinkle, alpha);
 }
 `;
 
@@ -44,6 +48,8 @@ uniform float uTime;
 uniform vec2 uViewport;
 uniform float uSizeMultiplier;
 uniform float uDensityBloom;
+uniform float uMinPixelSize;
+uniform float uMaxPixelSize;
 uniform float uTwinkleStrength;
 uniform float uTwinkleRate;
 uniform float uDriftStrength;
@@ -54,6 +60,7 @@ varying vec2 vUv;
 varying vec3 vColor;
 varying float vTwinkle;
 varying float vIntensity;
+varying float vFlash;
 
 void main() {
   float particleSize = aParams.x;
@@ -67,20 +74,25 @@ void main() {
       sin(seed * 37.9 + uTime * 0.11)
     ) * uDriftStrength;
   }
+  float twinkleSpeed = 0.050 + fract(seed * 29.17) * 0.045;
+  float twinkleCycle = fract(seed * 53.71 + uTime * uTwinkleRate * twinkleSpeed);
+  float flashEdge = min(twinkleCycle, 1.0 - twinkleCycle);
+  float dimCycle = fract(twinkleCycle + 0.47);
+  float dimEdge = min(dimCycle, 1.0 - dimCycle);
+  float twinkleMask = step(0.38, fract(seed * 11.97));
+  float flash = twinkleMask * (1.0 - smoothstep(0.0, 0.040, flashEdge));
+  float dim = twinkleMask * (1.0 - smoothstep(0.0, 0.060, dimEdge));
+  vFlash = flash * uTwinkleStrength;
+  vTwinkle = 1.0 - dim * 0.86 * uTwinkleStrength + flash * 1.15 * uTwinkleStrength;
   vec4 mvCenter = modelViewMatrix * vec4(center, 1.0);
   float distanceScale = clamp(10.8 / max(1.0, -mvCenter.z), 0.46, 1.8);
   float density = smoothstep(1.03, 1.50, vIntensity);
-  float bloomSpread = 1.0 + density * uDensityBloom * 0.78;
-  float pixelSize = clamp(particleSize * uSizeMultiplier * distanceScale * bloomSpread, 0.55, 16.0);
+  float bloomSpread = 1.0 + density * uDensityBloom * 0.72;
+  float twinkleSize = 1.0 + vFlash * 0.72;
+  float pixelSize = clamp(particleSize * uSizeMultiplier * distanceScale * bloomSpread * twinkleSize, uMinPixelSize, uMaxPixelSize);
   vec4 clip = projectionMatrix * mvCenter;
   clip.xy += position.xy * pixelSize * 2.0 / max(uViewport, vec2(1.0)) * clip.w;
   gl_Position = clip;
-  float twinkleSpeed = 0.075 + fract(seed * 29.17) * 0.075;
-  float twinkleCycle = fract(seed * 53.71 + uTime * uTwinkleRate * twinkleSpeed);
-  float twinkleEdge = min(twinkleCycle, 1.0 - twinkleCycle);
-  float twinkleMask = step(0.40, fract(seed * 11.97));
-  float blink = 1.0 - smoothstep(0.0, 0.075, twinkleEdge);
-  vTwinkle = 1.0 - twinkleMask * uTwinkleStrength * blink;
   vColor = aColor;
   vUv = uv;
 }
@@ -158,6 +170,8 @@ export const createParticleMaterial = (
     uSizeMultiplier: { value: options.sizeMultiplier ?? 1 },
     uDensityBloom: { value: options.densityBloom ?? 0 },
     uDensityWarmth: { value: options.densityWarmth ?? 0 },
+    uMinPixelSize: { value: options.minPixelSize ?? 0.55 },
+    uMaxPixelSize: { value: options.maxPixelSize ?? 16.0 },
     uTwinkleStrength: { value: options.twinkleStrength ?? 0.08 },
     uTwinkleRate: { value: options.twinkleRate ?? 0.7 },
     uDriftStrength: { value: options.driftStrength ?? 0 },
@@ -188,6 +202,64 @@ export const createTerrainPointMaterial = (
   },
   vertexShader: terrainVertex,
   fragmentShader: terrainFragment,
+  transparent: true,
+  depthWrite: false,
+  depthTest: true,
+  blending: THREE.AdditiveBlending,
+});
+
+export const createDensityBloomMaterial = (
+  opacity: number,
+  intensity: number,
+  sizeMultiplier: number,
+  warmth: number,
+) => new THREE.ShaderMaterial({
+  uniforms: {
+    uViewport: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) },
+    uOpacity: { value: opacity },
+    uIntensity: { value: intensity },
+    uSizeMultiplier: { value: sizeMultiplier },
+    uWarmth: { value: warmth },
+  },
+  vertexShader: `
+uniform vec2 uViewport;
+uniform float uSizeMultiplier;
+attribute vec3 aOffset;
+attribute vec3 aColor;
+attribute vec3 aParams;
+varying vec2 vUv;
+varying vec3 vColor;
+varying float vIntensity;
+void main() {
+  vUv = uv;
+  vColor = aColor;
+  vIntensity = aParams.z;
+  vec4 mv = modelViewMatrix * vec4(aOffset, 1.0);
+  float distanceScale = clamp(10.8 / max(1.0, -mv.z), 0.46, 1.8);
+  float px = clamp(aParams.x * uSizeMultiplier * distanceScale, 1.2, 30.0);
+  vec4 clip = projectionMatrix * mv;
+  clip.xy += position.xy * px * 2.0 / max(uViewport, vec2(1.0)) * clip.w;
+  gl_Position = clip;
+}
+`,
+  fragmentShader: `
+uniform float uOpacity;
+uniform float uIntensity;
+uniform float uWarmth;
+varying vec2 vUv;
+varying vec3 vColor;
+varying float vIntensity;
+void main() {
+  vec2 p = vUv - 0.5;
+  float r2 = dot(p, p);
+  float soft = exp(-4.2 * r2) * (1.0 - smoothstep(0.46, 0.515, length(p)));
+  float alpha = soft * uOpacity * clamp(vIntensity, 0.65, 1.8);
+  if (alpha < 0.0015) discard;
+  vec3 warm = vec3(1.0, 0.62, 0.25);
+  vec3 c = mix(vColor, warm, uWarmth);
+  gl_FragColor = vec4(c * uIntensity, alpha);
+}
+`,
   transparent: true,
   depthWrite: false,
   depthTest: true,

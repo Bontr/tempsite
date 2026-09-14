@@ -133,9 +133,9 @@ const flowerProfile: ParticleProfile = (x, y, z) => {
   const dz = (z - FLOWER_CENTER.z) / 2.8;
   const core = Math.exp(-(dx * dx + dy * dy + dz * dz) * 0.82);
   return {
-    sizeScale: 1.20 - core * 0.12,
-    intensity: 1.0 + core * 0.55,
-    jitter: 0.15 + core * 0.07,
+    sizeScale: 1.24 - core * 0.18,
+    intensity: 1.0 + core * 0.30,
+    jitter: 0.17 + core * 0.08,
   };
 };
 
@@ -145,9 +145,9 @@ const galaxyProfile: ParticleProfile = (x, y, z) => {
   const dz = (z - GALAXY_CENTER.z) / 2.5;
   const core = Math.exp(-(dx * dx + dy * dy + dz * dz) * 0.88);
   return {
-    sizeScale: 1.18 - core * 0.08,
-    intensity: 1.0 + core * 0.74,
-    jitter: 0.045 + core * 0.020,
+    sizeScale: 1.22 - core * 0.10,
+    intensity: 1.0 + core * 0.52,
+    jitter: 0.050 + core * 0.022,
   };
 };
 
@@ -156,26 +156,96 @@ const galaxyFillProfile: ParticleProfile = (x, y, z) => {
   const dy = (y - GALAXY_CENTER.y) / 1.15;
   const dz = (z - GALAXY_CENTER.z) / 2.7;
   const core = Math.exp(-(dx * dx + dy * dy + dz * dz) * 0.72);
-  return { sizeScale: 0.92 + core * 0.06, intensity: 0.76 + core * 0.16, jitter: 0.16 + core * 0.05 };
+  return { sizeScale: 1.00 + core * 0.08, intensity: 0.82 + core * 0.22, jitter: 0.15 + core * 0.05 };
 };
 
 const terrainProfile: ParticleProfile = (x, y, z) => {
   const ridge = Math.max(0, Math.min(1, (y + 3.15) / 1.25));
   const backlight = Math.exp(-(((x + 1.65) / 0.92) ** 2 + ((z - 1.12) / 0.68) ** 2));
   const footPocket = Math.exp(-(((x + 1.65) / 0.28) ** 2 + ((z - 1.70) / 0.23) ** 2));
-  const sizeScale = Math.max(0.94, 0.98 + ridge * 0.16 + backlight * 0.10 - footPocket * 0.06);
-  const intensity = Math.max(0.72, 0.78 + ridge * 0.22 + backlight * 1.18 - footPocket * 0.10);
+  const sizeScale = Math.max(1.00, 1.06 + ridge * 0.34 + backlight * 0.12 - footPocket * 0.05);
+  const intensity = Math.max(0.82, 0.92 + ridge * 0.58 + backlight * 0.82 - footPocket * 0.08);
   return { sizeScale, intensity };
 };
 
+const createCoreBloomGeometry = (
+  data: Float32Array,
+  countLimit: number,
+  positionOffset: number,
+  colorOffset: number,
+  sizeOffset: number,
+  center: THREE.Vector3,
+  radii: THREE.Vector3,
+  seedSalt: number,
+) => {
+  const total = Math.floor(data.length / MORPH_STRIDE);
+  const candidates: number[] = [];
+  for (let sourceIndex = 0; sourceIndex < total; sourceIndex += 1) {
+    const o = sourceIndex * MORPH_STRIDE;
+    const dx = (data[o + positionOffset] - center.x) / radii.x;
+    const dy = (data[o + positionOffset + 1] - center.y) / radii.y;
+    const dz = (data[o + positionOffset + 2] - center.z) / radii.z;
+    const weight = Math.exp(-(dx * dx + dy * dy + dz * dz) * 1.15);
+    if (weight > 0.20 && hash01(sourceIndex, seedSalt + 17) < 0.12 + weight * 0.42) {
+      candidates.push(sourceIndex);
+    }
+  }
+  const count = Math.min(countLimit, candidates.length);
+  const positions = new Float32Array(count * 3);
+  const colors = new Float32Array(count * 3);
+  const params = new Float32Array(count * 3);
+  for (let index = 0; index < count; index += 1) {
+    const sourceIndex = candidates[sampledIndex(index, count, candidates.length)];
+    const o = sourceIndex * MORPH_STRIDE;
+    const t = index * 3;
+    const x = data[o + positionOffset];
+    const y = data[o + positionOffset + 1];
+    const z = data[o + positionOffset + 2];
+    const dx = (x - center.x) / radii.x;
+    const dy = (y - center.y) / radii.y;
+    const dz = (z - center.z) / radii.z;
+    const weight = Math.exp(-(dx * dx + dy * dy + dz * dz) * 1.15);
+    const jitter = 0.06 + (1 - weight) * 0.08;
+    positions[t] = x + (hash01(sourceIndex, seedSalt + 101) - 0.5) * jitter;
+    positions[t + 1] = y + (hash01(sourceIndex, seedSalt + 211) - 0.5) * jitter;
+    positions[t + 2] = z + (hash01(sourceIndex, seedSalt + 307) - 0.5) * jitter;
+    colors[t] = data[o + colorOffset];
+    colors[t + 1] = data[o + colorOffset + 1];
+    colors[t + 2] = data[o + colorOffset + 2];
+    params[t] = data[o + sizeOffset] * (1.45 + weight * 1.35);
+    params[t + 1] = hash01(sourceIndex, seedSalt);
+    params[t + 2] = 0.72 + weight * 1.05;
+  }
+  const geometry = new THREE.InstancedBufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute([
+    -0.5, -0.5, 0, 0.5, -0.5, 0, 0.5, 0.5, 0, -0.5, 0.5, 0,
+  ], 3));
+  geometry.setAttribute('uv', new THREE.Float32BufferAttribute([0, 0, 1, 0, 1, 1, 0, 1], 2));
+  geometry.setIndex([0, 1, 2, 0, 2, 3]);
+  geometry.setAttribute('aOffset', new THREE.InstancedBufferAttribute(positions, 3));
+  geometry.setAttribute('aColor', new THREE.InstancedBufferAttribute(colors, 3));
+  geometry.setAttribute('aParams', new THREE.InstancedBufferAttribute(params, 3));
+  geometry.instanceCount = count;
+  return geometry;
+};
+
+export const createFlowerBloomGeometry = (data: Float32Array, count: number) =>
+  createCoreBloomGeometry(
+    data, count, 0, 6, 12, FLOWER_CENTER, new THREE.Vector3(2.4, 1.7, 2.4), 4242,
+  );
+export const createGalaxyBloomGeometry = (data: Float32Array, count: number) =>
+  createCoreBloomGeometry(
+    data, count, 3, 9, 13, GALAXY_CENTER, new THREE.Vector3(2.9, 0.95, 2.5), 5252,
+  );
+
 export const createFlowerGeometry = (data: Float32Array, count: number) =>
-  createStaticGeometry(data, MORPH_STRIDE, count, 0, 6, 12, null, 1906, 1.05, flowerProfile);
+  createStaticGeometry(data, MORPH_STRIDE, count, 0, 6, 12, null, 1906, 1.08, flowerProfile);
 
 export const createGalaxyGeometry = (data: Float32Array, count: number) =>
-  createStaticGeometry(data, MORPH_STRIDE, count, 3, 9, 13, null, 31415, 1.07, galaxyProfile);
+  createStaticGeometry(data, MORPH_STRIDE, count, 3, 9, 13, null, 31415, 1.10, galaxyProfile);
 
 export const createGalaxyFillGeometry = (data: Float32Array, count: number) =>
-  createStaticGeometry(data, MORPH_STRIDE, count, 3, 9, 13, null, 27182, 0.92, galaxyFillProfile);
+  createStaticGeometry(data, MORPH_STRIDE, count, 3, 9, 13, null, 27182, 0.98, galaxyFillProfile);
 
 export const createTerrainGeometry = (data: Float32Array, count: number) =>
   createStaticGeometry(data, TERRAIN_STRIDE, count, 0, 3, 6, null, 7741, 1.0, terrainProfile);
