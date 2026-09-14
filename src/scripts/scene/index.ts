@@ -48,15 +48,9 @@ if (window.location.hash) {
 window.scrollTo(0, 0);
 window.addEventListener('pageshow', () => window.scrollTo(0, 0), { once: true });
 
-setSceneState('loading');
-const bakedSceneData = await loadBakedSceneData().catch((error) => {
-  console.error('Bontr scene data failed to load.', error);
-  setSceneState('failed');
-  throw error;
-});
-const { morph, terrain, stars } = bakedSceneData;
-
-let renderer: THREE.WebGLRenderer;
+const initializeScene = async () => {
+  setSceneState('loading');
+  let renderer: THREE.WebGLRenderer;
 try {
   renderer = new THREE.WebGLRenderer({
     canvas,
@@ -69,6 +63,14 @@ try {
   setSceneState('failed');
   throw error;
 }
+
+const bakedSceneData = await loadBakedSceneData().catch((error) => {
+  console.error('Bontr scene data failed to load.', error);
+  setSceneState('failed');
+  throw error;
+});
+const { morph, terrain, stars } = bakedSceneData;
+
 renderer.setClearColor(0x020202, 1);
 renderer.setPixelRatio(initialPixelRatio);
 renderer.setSize(window.innerWidth, window.innerHeight, false);
@@ -511,4 +513,10 @@ window.addEventListener('pagehide', () => {
     material.dispose();
   });
   renderer.dispose();
+});
+};
+
+void initializeScene().catch((error) => {
+  console.error('Bontr scene initialization failed.', error);
+  setSceneState('failed');
 });
