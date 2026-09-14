@@ -131,11 +131,11 @@ const flowerProfile: ParticleProfile = (x, y, z) => {
   const dx = (x - FLOWER_CENTER.x) / 2.8;
   const dy = (y - FLOWER_CENTER.y) / 2.1;
   const dz = (z - FLOWER_CENTER.z) / 2.8;
-  const core = Math.exp(-(dx * dx + dy * dy + dz * dz) * 1.35);
+  const core = Math.exp(-(dx * dx + dy * dy + dz * dz) * 0.82);
   return {
-    sizeScale: 1.16 - core * 0.24,
-    intensity: 1.0 + core * 0.72,
-    jitter: 0.10 + core * 0.04,
+    sizeScale: 1.20 - core * 0.12,
+    intensity: 1.0 + core * 0.55,
+    jitter: 0.15 + core * 0.07,
   };
 };
 
@@ -143,25 +143,25 @@ const galaxyProfile: ParticleProfile = (x, y, z) => {
   const dx = (x - GALAXY_CENTER.x) / 3.1;
   const dy = (y - GALAXY_CENTER.y) / 1.05;
   const dz = (z - GALAXY_CENTER.z) / 2.5;
-  const core = Math.exp(-(dx * dx + dy * dy + dz * dz) * 1.2);
+  const core = Math.exp(-(dx * dx + dy * dy + dz * dz) * 0.88);
   return {
-    sizeScale: 1.10 - core * 0.20,
-    intensity: 1.0 + core * 0.95,
-    jitter: 0.028 + core * 0.012,
+    sizeScale: 1.10 - core * 0.12,
+    intensity: 1.0 + core * 0.72,
+    jitter: 0.036 + core * 0.016,
   };
 };
 
 const terrainProfile: ParticleProfile = (x, y, z) => {
   const ridge = Math.max(0, Math.min(1, (y + 3.15) / 1.25));
-  const backlight = Math.exp(-(((x + 1.65) / 1.10) ** 2 + ((z - 1.08) / 0.82) ** 2));
-  const footPocket = Math.exp(-(((x + 1.65) / 0.30) ** 2 + ((z - 1.70) / 0.25) ** 2));
-  const sizeScale = Math.max(1.0, 1.20 + ridge * 0.36 + backlight * 0.14 - footPocket * 0.08);
-  const intensity = Math.max(0.92, 1.05 + ridge * 0.58 + backlight * 0.72 - footPocket * 0.18);
+  const backlight = Math.exp(-(((x + 1.65) / 0.92) ** 2 + ((z - 1.12) / 0.68) ** 2));
+  const footPocket = Math.exp(-(((x + 1.65) / 0.28) ** 2 + ((z - 1.70) / 0.23) ** 2));
+  const sizeScale = Math.max(0.94, 0.98 + ridge * 0.16 + backlight * 0.10 - footPocket * 0.06);
+  const intensity = Math.max(0.72, 0.78 + ridge * 0.22 + backlight * 1.18 - footPocket * 0.10);
   return { sizeScale, intensity };
 };
 
 export const createFlowerGeometry = (data: Float32Array, count: number) =>
-  createStaticGeometry(data, MORPH_STRIDE, count, 0, 6, 12, null, 1906, 1.02, flowerProfile);
+  createStaticGeometry(data, MORPH_STRIDE, count, 0, 6, 12, null, 1906, 1.05, flowerProfile);
 
 export const createGalaxyGeometry = (data: Float32Array, count: number) =>
   createStaticGeometry(data, MORPH_STRIDE, count, 3, 9, 13, null, 31415, 1.04, galaxyProfile);

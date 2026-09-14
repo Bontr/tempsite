@@ -95,7 +95,7 @@ renderer.setPixelRatio(initialPixelRatio);
 renderer.setSize(window.innerWidth, window.innerHeight, false);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.92;
+renderer.toneMappingExposure = 1.90;
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x020202);
@@ -111,27 +111,33 @@ const flowerMaterial = createParticleMaterial(initialPixelRatio, {
   opacity: 1.0,
   twinkleStrength: 0.0,
   twinkleRate: 0.0,
-  intensity: 1.95,
-  sizeMultiplier: 1.08,
+  intensity: 2.60,
+  sizeMultiplier: 1.10,
+  densityBloom: 0.92,
+  densityWarmth: 0.18,
   additive: true,
 });
 const galaxyMaterial = createParticleMaterial(initialPixelRatio, {
   opacity: 1.0,
   twinkleStrength: 0.0,
   twinkleRate: 0.0,
-  intensity: 1.58,
-  sizeMultiplier: 1.08,
+  intensity: 2.05,
+  sizeMultiplier: 1.04,
+  densityBloom: 1.05,
+  densityWarmth: 0.10,
   additive: true,
 });
 const starMaterial = createParticleMaterial(initialPixelRatio, {
-  opacity: 0.88,
-  twinkleStrength: 0.98,
+  opacity: 0.82,
+  twinkleStrength: 0.94,
   twinkleRate: 1.0,
   driftStrength: 0,
-  intensity: 1.06,
-  sizeMultiplier: 0.98,
+  intensity: 1.04,
+  sizeMultiplier: 0.94,
+  densityBloom: 0.0,
+  densityWarmth: 0.0,
 });
-const terrainMaterial = createTerrainPointMaterial(initialPixelRatio, 1.0, 1.22, 1.26);
+const terrainMaterial = createTerrainPointMaterial(initialPixelRatio, 1.0, 1.04, 0.88);
 
 const flowerPoints = new THREE.Mesh(flowerGeometry, flowerMaterial);
 flowerPoints.frustumCulled = false;
@@ -188,9 +194,9 @@ addLimb(-0.1, 0.49, -0.18, 0.34, 0.022);
 addLimb(0.1, 0.49, 0.18, 0.34, 0.022);
 
 const personRimMaterial = new THREE.MeshBasicMaterial({
-  color: 0xf0ad69,
+  color: 0xffc178,
   transparent: true,
-  opacity: 0.20,
+  opacity: 0.32,
   depthWrite: false,
   depthTest: false,
   side: THREE.BackSide,
@@ -222,7 +228,7 @@ const contactShadowGeometry = new THREE.PlaneGeometry(1, 1);
 contactShadowGeometry.rotateX(-Math.PI / 2);
 const contactShadow = new THREE.Mesh(contactShadowGeometry, contactShadowMaterial);
 contactShadow.position.set(personX, personGround + 0.025, personZ + 0.015);
-contactShadow.scale.set(0.5, 0.78, 1);
+contactShadow.scale.set(0.28, 0.42, 1);
 contactShadow.renderOrder = 5;
 foreground.add(contactShadow);
 
@@ -234,28 +240,39 @@ const createOrbit = (
   rotationZ: number,
   opacity: number,
 ) => {
-  const points: THREE.Vector3[] = [];
+  const count = 180;
+  const offsets = new Float32Array(count * 3);
+  const colors = new Float32Array(count * 3);
+  const params = new Float32Array(count * 3);
   const tilt = THREE.MathUtils.degToRad(tiltX);
   const spin = THREE.MathUtils.degToRad(rotationZ);
-  for (let index = 0; index < 192; index += 1) {
-    const theta = (index / 192) * Math.PI * 2;
+  for (let index = 0; index < count; index += 1) {
+    const theta = (index / count) * Math.PI * 2;
     const x = Math.cos(theta) * radiusX;
     const y = Math.sin(theta) * radiusY;
     const yTilted = y * Math.cos(tilt);
     const zTilted = y * Math.sin(tilt);
     const xSpun = x * Math.cos(spin) - yTilted * Math.sin(spin);
     const ySpun = x * Math.sin(spin) + yTilted * Math.cos(spin);
-    points.push(new THREE.Vector3(center.x + xSpun, center.y + ySpun, center.z + zTilted));
+    const seed = ((index * 16807 + 97) % 2147483647) / 2147483647;
+    const target = index * 3;
+    offsets.set([center.x + xSpun, center.y + ySpun, center.z + zTilted], target);
+    colors.set([1.0, 0.48 + seed * 0.14, 0.20 + seed * 0.08], target);
+    params.set([0.34 + seed * 0.16, seed, 1.0], target);
   }
-  const geometry = new THREE.BufferGeometry().setFromPoints(points);
-  const material = new THREE.LineBasicMaterial({
-    color: 0xf0a064,
-    transparent: true,
-    opacity,
-    depthWrite: false,
-    blending: THREE.AdditiveBlending,
+  const geometry = new THREE.InstancedBufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute([-0.5,-0.5,0, 0.5,-0.5,0, 0.5,0.5,0, -0.5,0.5,0], 3));
+  geometry.setAttribute('uv', new THREE.Float32BufferAttribute([0,0, 1,0, 1,1, 0,1], 2));
+  geometry.setIndex([0,1,2, 0,2,3]);
+  geometry.setAttribute('aOffset', new THREE.InstancedBufferAttribute(offsets, 3));
+  geometry.setAttribute('aColor', new THREE.InstancedBufferAttribute(colors, 3));
+  geometry.setAttribute('aParams', new THREE.InstancedBufferAttribute(params, 3));
+  geometry.instanceCount = count;
+  const material = createParticleMaterial(initialPixelRatio, {
+    opacity, twinkleStrength: 0, twinkleRate: 0, intensity: 1.20,
+    sizeMultiplier: 0.52, densityBloom: 0, densityWarmth: 0, additive: true,
   });
-  const line = new THREE.LineLoop(geometry, material);
+  const line = new THREE.Mesh(geometry, material);
   line.frustumCulled = false;
   scene.add(line);
   return { line, material };
@@ -419,7 +436,7 @@ const applyScene = (progress: number, time: number) => {
   flowerPoints.visible = flowerExit > 0.002;
   galaxyMaterial.uniforms.uTime.value = time;
   starMaterial.uniforms.uTime.value = time;
-  terrainMaterial.uniforms.uOpacity.value = 1.0 * landscapeExit;
+  terrainMaterial.uniforms.uOpacity.value = 0.88 * landscapeExit;
   foreground.visible = landscapeExit > 0.002;
 
   const shadowDirection = terrainMaterial.uniforms.uShadowDir.value as THREE.Vector2;
@@ -429,15 +446,15 @@ const applyScene = (progress: number, time: number) => {
   terrainMaterial.uniforms.uShadowOpacity.value = 0.38;
 
   silhouetteMaterial.opacity = landscapeExit;
-  personRimMaterial.opacity = 0.20 * landscapeExit;
-  contactShadowMaterial.uniforms.uOpacity.value = 0.26 * landscapeExit;
+  personRimMaterial.opacity = 0.32 * landscapeExit;
+  contactShadowMaterial.uniforms.uOpacity.value = 0.10 * landscapeExit;
 
-  flowerOrbitA.material.opacity = 0.18 * flowerExit;
-  flowerOrbitB.material.opacity = 0.08 * flowerExit;
+  flowerOrbitA.material.uniforms.uOpacity.value = 0.24 * flowerExit;
+  flowerOrbitB.material.uniforms.uOpacity.value = 0.10 * flowerExit;
   flowerOrbitA.line.visible = flowerExit > 0.002;
   flowerOrbitB.line.visible = flowerExit > 0.002;
-  galaxyOrbitA.material.opacity = 0.11;
-  galaxyOrbitB.material.opacity = 0.05;
+  galaxyOrbitA.material.uniforms.uOpacity.value = 0.14;
+  galaxyOrbitB.material.uniforms.uOpacity.value = 0.06;
   travelMaterial.opacity = 0.005 + travelPulse * 0.009;
   travelStreaks.rotation.z = time * 0.0025;
   if (!testMode && !reduceMotion) updateShootingStars(time);
@@ -477,9 +494,9 @@ const resize = () => {
   renderer.setSize(width, height, false);
   camera.aspect = width / Math.max(1, height);
   camera.updateProjectionMatrix();
-  [flowerMaterial, galaxyMaterial, starMaterial, terrainMaterial].forEach((material) => {
-    material.uniforms.uViewport.value.set(width, height);
-  });
+  [flowerMaterial, galaxyMaterial, starMaterial, terrainMaterial,
+    flowerOrbitA.material, flowerOrbitB.material, galaxyOrbitA.material, galaxyOrbitB.material]
+    .forEach((material) => material.uniforms.uViewport.value.set(width, height));
 };
 window.addEventListener('resize', resize, { passive: true });
 resize();

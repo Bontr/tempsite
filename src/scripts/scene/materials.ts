@@ -7,12 +7,16 @@ export type ParticleMaterialOptions = {
   driftStrength?: number;
   intensity?: number;
   sizeMultiplier?: number;
+  densityBloom?: number;
+  densityWarmth?: number;
   additive?: boolean;
 };
 
 const pointFragment = `
 uniform float uOpacity;
 uniform float uIntensity;
+uniform float uDensityBloom;
+uniform float uDensityWarmth;
 varying vec2 vUv;
 varying vec3 vColor;
 varying float vTwinkle;
@@ -22,14 +26,16 @@ void main() {
   vec2 p = vUv - 0.5;
   float radius = length(p);
   float r2 = dot(p, p);
-  float core = exp(-18.0 * r2);
-  float density = smoothstep(1.08, 1.72, vIntensity);
-  float halo = exp(-4.0 * r2) * density;
-  float shape = (core * 0.90 + halo * 0.34) * (1.0 - smoothstep(0.46, 0.51, radius));
+  float core = exp(-20.0 * r2);
+  float density = smoothstep(1.03, 1.50, vIntensity);
+  float halo = exp(-3.0 * r2) * density * uDensityBloom;
+  float shape = (core * 0.90 + halo * 0.15) * (1.0 - smoothstep(0.47, 0.515, radius));
   float alpha = shape * uOpacity * vTwinkle;
-  if (alpha < 0.004) discard;
-  float luminance = 1.0 + max(0.0, vIntensity - 1.0) * 0.28;
-  gl_FragColor = vec4(vColor * uIntensity * luminance * (0.92 + core * 0.42) * vTwinkle, alpha);
+  if (alpha < 0.003) discard;
+  vec3 warmTarget = vec3(1.0, 0.84, 0.66);
+  vec3 litColor = mix(vColor, warmTarget, density * uDensityWarmth);
+  float densityCompression = mix(1.0, 0.48, density);
+  gl_FragColor = vec4(litColor * uIntensity * densityCompression * (0.98 + core * 0.24 + halo * 0.05) * vTwinkle, alpha);
 }
 `;
 
@@ -37,6 +43,7 @@ const particleVertex = `
 uniform float uTime;
 uniform vec2 uViewport;
 uniform float uSizeMultiplier;
+uniform float uDensityBloom;
 uniform float uTwinkleStrength;
 uniform float uTwinkleRate;
 uniform float uDriftStrength;
@@ -62,15 +69,17 @@ void main() {
   }
   vec4 mvCenter = modelViewMatrix * vec4(center, 1.0);
   float distanceScale = clamp(10.8 / max(1.0, -mvCenter.z), 0.46, 1.8);
-  float pixelSize = clamp(particleSize * uSizeMultiplier * distanceScale, 0.8, 12.0);
+  float density = smoothstep(1.03, 1.50, vIntensity);
+  float bloomSpread = 1.0 + density * uDensityBloom * 0.78;
+  float pixelSize = clamp(particleSize * uSizeMultiplier * distanceScale * bloomSpread, 0.8, 16.0);
   vec4 clip = projectionMatrix * mvCenter;
   clip.xy += position.xy * pixelSize * 2.0 / max(uViewport, vec2(1.0)) * clip.w;
   gl_Position = clip;
-  float twinkleSpeed = 0.035 + fract(seed * 29.17) * 0.045;
+  float twinkleSpeed = 0.025 + fract(seed * 29.17) * 0.035;
   float twinkleCycle = fract(seed * 53.71 + uTime * uTwinkleRate * twinkleSpeed);
   float twinkleEdge = min(twinkleCycle, 1.0 - twinkleCycle);
-  float twinkleMask = step(0.30, fract(seed * 11.97));
-  float blink = 1.0 - smoothstep(0.0, 0.06, twinkleEdge);
+  float twinkleMask = step(0.50, fract(seed * 11.97));
+  float blink = 1.0 - smoothstep(0.0, 0.038, twinkleEdge);
   vTwinkle = 1.0 - twinkleMask * uTwinkleStrength * blink;
   vColor = aColor;
   vUv = uv;
@@ -147,6 +156,8 @@ export const createParticleMaterial = (
     uOpacity: { value: options.opacity ?? 1 },
     uIntensity: { value: options.intensity ?? 1 },
     uSizeMultiplier: { value: options.sizeMultiplier ?? 1 },
+    uDensityBloom: { value: options.densityBloom ?? 0 },
+    uDensityWarmth: { value: options.densityWarmth ?? 0 },
     uTwinkleStrength: { value: options.twinkleStrength ?? 0.08 },
     uTwinkleRate: { value: options.twinkleRate ?? 0.7 },
     uDriftStrength: { value: options.driftStrength ?? 0 },
