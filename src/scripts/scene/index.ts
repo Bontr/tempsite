@@ -54,9 +54,16 @@ let sceneDisabled = false;
 const setWebglLive = (live: boolean) => {
   if (sceneRoot) sceneRoot.dataset.webglLive = live ? 'true' : 'false';
 };
+const setFallbackBlend = (progress: number) => {
+  if (!sceneRoot) return;
+  const t = Math.max(0, Math.min(1, progress / 0.04));
+  const smooth = t * t * (3 - 2 * t);
+  sceneRoot.style.setProperty('--fallback-opacity', String(1 - smooth));
+};
 
 const initializeScene = async () => {
   setWebglLive(false);
+  setFallbackBlend(0);
   setSceneState('loading');
   let renderer: THREE.WebGLRenderer;
 try {
@@ -84,7 +91,7 @@ renderer.setPixelRatio(initialPixelRatio);
 renderer.setSize(window.innerWidth, window.innerHeight, false);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.60;
+renderer.toneMappingExposure = 1.92;
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x020202);
@@ -100,22 +107,22 @@ const flowerMaterial = createParticleMaterial(initialPixelRatio, {
   opacity: 1.0,
   twinkleStrength: 0.0,
   twinkleRate: 0.0,
-  intensity: 2.05,
+  intensity: 2.42,
   additive: true,
 });
 const galaxyMaterial = createParticleMaterial(initialPixelRatio, {
   opacity: 1.0,
   twinkleStrength: 0.0,
   twinkleRate: 0.0,
-  intensity: 1.34,
+  intensity: 1.62,
   additive: true,
 });
 const starMaterial = createParticleMaterial(initialPixelRatio, {
-  opacity: 0.86,
-  twinkleStrength: 0.34,
-  twinkleRate: 0.72,
+  opacity: 0.92,
+  twinkleStrength: 0.46,
+  twinkleRate: 0.58,
   driftStrength: 0,
-  intensity: 1.08,
+  intensity: 1.22,
 });
 const terrainMaterial = createTerrainPointMaterial(initialPixelRatio, 1.0);
 
@@ -142,6 +149,12 @@ const flowerGlowMaterial = createGlowMaterial();
 const flowerGlow = new THREE.Mesh(new THREE.PlaneGeometry(4.95, 3.42), flowerGlowMaterial);
 flowerGlow.position.copy(FLOWER_CENTER).add(new THREE.Vector3(0.05, 0.08, -0.35));
 scene.add(flowerGlow);
+
+const flowerCoreGlowMaterial = createGlowMaterial();
+flowerCoreGlowMaterial.uniforms.uColor.value.setRGB(1.45, 0.78, 0.38);
+const flowerCoreGlow = new THREE.Mesh(new THREE.PlaneGeometry(1.9, 1.25), flowerCoreGlowMaterial);
+flowerCoreGlow.position.set(FLOWER_CENTER.x + 0.02, -0.86, FLOWER_CENTER.z + 0.08);
+scene.add(flowerCoreGlow);
 
 const galaxyGlowMaterial = createGlowMaterial();
 const galaxyGlow = new THREE.Mesh(new THREE.PlaneGeometry(3.7, 2.3), galaxyGlowMaterial);
@@ -375,13 +388,14 @@ const cameraTarget = new THREE.Vector3();
 
 const applyScene = (progress: number, time: number) => {
   const p = clamp01(progress);
-  const shouldPresentWebgl = sceneReady && !sceneDisabled && (testMode || captureMode || p > 0.015);
-  setWebglLive(shouldPresentWebgl);
-  const travelPulse = Math.sin(p * Math.PI);
-  const flowerExit = 1 - THREE.MathUtils.smoothstep(p, 0.18, 0.4);
-  const landscapeExit = 1 - THREE.MathUtils.smoothstep(p, 0.24, 0.43);
+  setWebglLive(sceneReady && !sceneDisabled);
+  setFallbackBlend(testMode || captureMode ? 1 : p);
+  const sceneP = testMode || captureMode ? p : clamp01((p - 0.04) / 0.96);
+  const travelPulse = Math.sin(sceneP * Math.PI);
+  const flowerExit = 1 - THREE.MathUtils.smoothstep(sceneP, 0.18, 0.4);
+  const landscapeExit = 1 - THREE.MathUtils.smoothstep(sceneP, 0.24, 0.43);
   const fieldSettleStart = mobile ? 0.66 : 0.7;
-  const fieldSettle = THREE.MathUtils.smoothstep(p, fieldSettleStart, 1);
+  const fieldSettle = THREE.MathUtils.smoothstep(sceneP, fieldSettleStart, 1);
   const shortWide = window.innerWidth >= 1400 && window.innerHeight <= 780;
   const fieldOffsetVh = mobile ? 24 : shortWide ? 18.5 : 20;
 
@@ -389,8 +403,8 @@ const applyScene = (progress: number, time: number) => {
     fieldCopy.style.transform = `translate3d(0, ${fieldSettle * window.innerHeight * fieldOffsetVh / 100}px, 0)`;
   }
 
-  cameraCurve.getPointAt(p, camera.position);
-  targetCurve.getPointAt(p, cameraTarget);
+  cameraCurve.getPointAt(sceneP, camera.position);
+  targetCurve.getPointAt(sceneP, cameraTarget);
   camera.lookAt(cameraTarget);
 
   flowerMaterial.uniforms.uTime.value = time;
@@ -411,6 +425,9 @@ const applyScene = (progress: number, time: number) => {
   flowerGlowMaterial.uniforms.uOpacity.value = 0.98 * flowerExit;
   flowerGlow.visible = flowerExit > 0.002;
   flowerGlow.quaternion.copy(camera.quaternion);
+  flowerCoreGlowMaterial.uniforms.uOpacity.value = 0.58 * flowerExit;
+  flowerCoreGlow.visible = flowerExit > 0.002;
+  flowerCoreGlow.quaternion.copy(camera.quaternion);
   galaxyGlowMaterial.uniforms.uOpacity.value = 0.3;
   galaxyGlow.quaternion.copy(camera.quaternion);
   personHalo.quaternion.copy(camera.quaternion);
@@ -482,7 +499,8 @@ const startRendering = async () => {
     renderer.render(scene, camera);
     sceneReady = true;
     setSceneState('ready');
-    setWebglLive(testMode || captureMode || scrollState.progress > 0.015);
+    setWebglLive(true);
+    setFallbackBlend(testMode || captureMode ? 1 : scrollState.progress);
   } catch (error) {
     console.error('Bontr scene shader preparation failed.', error);
     sceneDisabled = true;
@@ -507,6 +525,7 @@ canvas.addEventListener('webglcontextlost', () => {
   sceneDisabled = true;
   sceneReady = false;
   setWebglLive(false);
+  setFallbackBlend(0);
   setSceneState('failed');
   renderer.setAnimationLoop(null);
 });
@@ -515,10 +534,10 @@ window.addEventListener('pagehide', (event) => {
   renderer.setAnimationLoop(null);
   if (event.persisted) return;
   ScrollTrigger.getAll().forEach((trigger) => trigger.kill());
-  [flowerGeometry, galaxyGeometry, terrainGeometry, starGeometry, contactShadowGeometry, travelGeometry]
+  [flowerGeometry, galaxyGeometry, terrainGeometry, starGeometry, contactShadowGeometry, travelGeometry, flowerCoreGlow.geometry]
     .forEach((geometry) => geometry.dispose());
   [flowerMaterial, galaxyMaterial, terrainMaterial, starMaterial, flowerGlowMaterial,
-    galaxyGlowMaterial, silhouetteMaterial, personHaloMaterial, contactShadowMaterial, travelMaterial]
+    galaxyGlowMaterial, flowerCoreGlowMaterial, silhouetteMaterial, personHaloMaterial, contactShadowMaterial, travelMaterial]
     .forEach((material) => material.dispose());
   person.traverse((object) => {
     if (object instanceof THREE.Mesh) object.geometry.dispose();

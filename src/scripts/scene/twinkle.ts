@@ -25,19 +25,19 @@ if (canvas) {
     const rng = makeRng(0xB07A2026);
     const mobile = window.innerWidth < 720;
     const sparkles: Sparkle[] = [];
-    const ambientCount = mobile ? 150 : 300;
-    const flowerCount = mobile ? 55 : 105;
+    const ambientCount = mobile ? 360 : 820;
+    const flowerCount = mobile ? 110 : 240;
 
     const addSparkle = (x: number, y: number, flower = false) => {
-      const rare = rng() > 0.91;
+      const rare = rng() > 0.94;
       sparkles.push({
         x,
         y,
         size: (flower ? 0.34 : 0.42) + rng() * (rare ? 1.05 : 0.55),
         phase: rng() * Math.PI * 2,
         rate: 0.42 + rng() * 0.72,
-        base: 0.07 + rng() * 0.12,
-        amplitude: (rare ? 0.58 : 0.30) + rng() * 0.16,
+        base: 0.05 + rng() * 0.10,
+        amplitude: (rare ? 0.70 : 0.38) + rng() * 0.18,
         warm: rng() < 0.15 ? 1 : 0,
         cross: rare || rng() < 0.035,
       });

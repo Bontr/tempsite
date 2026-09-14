@@ -70,45 +70,45 @@ a {
 }
 
 .scene__fallback {
-  z-index: 0;
-  object-fit: cover;
-  object-position: center;
-  background: var(--page);
-  opacity: 1;
-  filter: brightness(1.66) contrast(1.10) saturate(1.08);
-}
-
-.scene__fallback-bloom {
   z-index: 1;
   object-fit: cover;
   object-position: center;
-  opacity: 0.60;
+  background: var(--page);
+  opacity: var(--fallback-opacity, 1);
+  filter: brightness(1.12) contrast(1.05) saturate(1.03);
+}
+
+.scene__fallback-bloom {
+  z-index: 2;
+  object-fit: cover;
+  object-position: center;
+  opacity: calc(var(--fallback-opacity, 1) * 0.18);
   mix-blend-mode: screen;
-  filter: blur(1.6px) brightness(2.15) contrast(1.20) saturate(1.08);
+  filter: blur(1.4px) brightness(1.48) contrast(1.10) saturate(1.04);
   transform: scale(1.002);
 }
 
 .scene__twinkle {
-  z-index: 2;
+  z-index: 3;
   pointer-events: none;
   opacity: 1;
 }
 
 .scene__canvas {
-  z-index: 3;
+  z-index: 0;
   background: var(--page);
   opacity: 0;
+  filter: brightness(1.16) contrast(1.03) saturate(1.02);
   transition: none;
 }
 
 .scene[data-webgl-live='true'][data-scene-state='ready'] .scene__canvas { opacity: 1; }
-.scene[data-webgl-live='true'][data-scene-state='ready'] .scene__fallback,
-.scene[data-webgl-live='true'][data-scene-state='ready'] .scene__fallback-bloom,
-.scene[data-webgl-live='true'][data-scene-state='ready'] .scene__twinkle { opacity: 0; }
 .scene[data-scene-state='failed'] .scene__canvas,
 .scene[data-scene-state='lost'] .scene__canvas { opacity: 0; }
 .scene[data-scene-state='failed'] .scene__fallback,
 .scene[data-scene-state='lost'] .scene__fallback { opacity: 1; }
+.scene[data-scene-state='failed'] .scene__fallback-bloom,
+.scene[data-scene-state='lost'] .scene__fallback-bloom { opacity: 0.34; }
 
 .scene__vignette {
   position: absolute;

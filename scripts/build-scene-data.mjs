@@ -33,10 +33,11 @@ const halton = (index, base) => {
 };
 const lerp = (a, b, t) => a + (b - a) * t;
 
-sampleRows('source-data/home-morph.source.f32', 'src/assets/scene/home-morph.f32', 15, 90000);
-sampleRows('source-data/home-terrain.source.f32', 'src/assets/scene/home-terrain.f32', 7, 46000);
+sampleRows('source-data/home-morph.source.f32', 'src/assets/scene/home-morph.f32', 15, 135000);
 
-const starCount = 45000;
+sampleRows('source-data/home-terrain.source.f32', 'src/assets/scene/home-terrain.f32', 7, 70000);
+
+const starCount = 90000;
 const stride = 9;
 const stars = new Float32Array(starCount * stride);
 const cool = [0.72, 0.78, 0.84];

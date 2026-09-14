@@ -13,7 +13,8 @@
     "preview": "astro preview",
     "check": "astro check",
     "check:scene": "node scripts/validate-scene-assets.mjs",
-    "generate:scene": "node scripts/build-scene-data.mjs"
+    "generate:scene": "node scripts/build-scene-data.mjs && node scripts/render-hero-fallback.mjs",
+    "render:hero": "node scripts/render-hero-fallback.mjs"
   },
   "dependencies": {
     "astro": "^7.3.2",
@@ -25,6 +26,7 @@
     "@types/node": "^22.20.2",
     "@types/three": "^0.185.4",
     "cross-env": "^10.1.0",
+    "sharp": "^0.35.4",
     "typescript": "^5.9.2"
   }
 }
