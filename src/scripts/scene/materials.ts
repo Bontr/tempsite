@@ -59,10 +59,11 @@ void main() {
   float distanceScale = clamp(10.8 / max(1.0, -mvPosition.z), 0.46, 1.8);
   gl_PointSize = clamp(aSize * uPixelRatio * distanceScale, 1.0, 8.5 * uPixelRatio);
   gl_Position = projectionMatrix * mvPosition;
-  float wave = 0.5 + 0.5 * sin(aSeed * 91.7 + uTime * uTwinkleRate);
-  float flare = pow(max(0.0, sin(aSeed * 47.1 + uTime * uTwinkleRate * 0.37)), 18.0);
-  float twinkleMask = max(step(0.72, aSeed), step(0.5, aGlyph));
-  vTwinkle = 1.0 + twinkleMask * uTwinkleStrength * ((wave - 0.5) * 0.72 + flare * 0.48);
+  float twinkleSpeed = 0.18 + fract(aSeed * 29.17) * 0.14;
+  float twinklePhase = aSeed * 125.7 + uTime * uTwinkleRate * twinkleSpeed;
+  float twinkleWave = 0.5 + 0.5 * sin(twinklePhase);
+  float blink = smoothstep(0.9990, 1.0, twinkleWave);
+  vTwinkle = 1.0 - uTwinkleStrength * blink;
   vColor = aColor;
   vGlyph = aGlyph;
 }
@@ -127,7 +128,7 @@ void main() {
   float glow = 1.0 - smoothstep(0.08, 0.5, radius);
   float alpha = shape * uOpacity * vTwinkle * (1.0 - vShadow * 0.28);
   if (alpha < 0.01) discard;
-  gl_FragColor = vec4(vColor * (1.28 + glow * 0.42), alpha);
+  gl_FragColor = vec4(vColor * (1.38 + glow * 0.48), alpha);
 }
 `;
 

@@ -22,8 +22,8 @@ export const getSceneQuality = (): SceneQuality => {
   const cores = navigator.hardwareConcurrency || 8;
   const memory = (navigator as Navigator & { deviceMemory?: number }).deviceMemory ?? 8;
   const constrained = cores <= 4 || memory <= 4;
-  if (mobile || constrained) return { morphCount: 60000, terrainCount: 32000, starCount: 36000 };
-  return { morphCount: 135000, terrainCount: 70000, starCount: 90000 };
+  if (mobile || constrained) return { morphCount: 60000, terrainCount: 32000, starCount: 26000 };
+  return { morphCount: 135000, terrainCount: 70000, starCount: 60000 };
 };
 
 const validateFloats = (data: Float32Array, stride: number, label: string) => {

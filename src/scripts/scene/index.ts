@@ -54,16 +54,9 @@ let sceneDisabled = false;
 const setWebglLive = (live: boolean) => {
   if (sceneRoot) sceneRoot.dataset.webglLive = live ? 'true' : 'false';
 };
-const setFallbackBlend = (progress: number) => {
-  if (!sceneRoot) return;
-  const t = Math.max(0, Math.min(1, progress / 0.04));
-  const smooth = t * t * (3 - 2 * t);
-  sceneRoot.style.setProperty('--fallback-opacity', String(1 - smooth));
-};
 
 const initializeScene = async () => {
   setWebglLive(false);
-  setFallbackBlend(0);
   setSceneState('loading');
   let renderer: THREE.WebGLRenderer;
 try {
@@ -91,7 +84,7 @@ renderer.setPixelRatio(initialPixelRatio);
 renderer.setSize(window.innerWidth, window.innerHeight, false);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.92;
+renderer.toneMappingExposure = 2.20;
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x020202);
@@ -107,22 +100,22 @@ const flowerMaterial = createParticleMaterial(initialPixelRatio, {
   opacity: 1.0,
   twinkleStrength: 0.0,
   twinkleRate: 0.0,
-  intensity: 2.42,
+  intensity: 2.85,
   additive: true,
 });
 const galaxyMaterial = createParticleMaterial(initialPixelRatio, {
   opacity: 1.0,
   twinkleStrength: 0.0,
   twinkleRate: 0.0,
-  intensity: 1.62,
+  intensity: 1.75,
   additive: true,
 });
 const starMaterial = createParticleMaterial(initialPixelRatio, {
-  opacity: 0.92,
-  twinkleStrength: 0.46,
-  twinkleRate: 0.58,
+  opacity: 0.88,
+  twinkleStrength: 0.98,
+  twinkleRate: 1.0,
   driftStrength: 0,
-  intensity: 1.22,
+  intensity: 1.12,
 });
 const terrainMaterial = createTerrainPointMaterial(initialPixelRatio, 1.0);
 
@@ -143,6 +136,7 @@ scene.add(foreground);
 
 const starPoints = new THREE.Points(starGeometry, starMaterial);
 starPoints.frustumCulled = false;
+starPoints.renderOrder = -20;
 scene.add(starPoints);
 
 const flowerGlowMaterial = createGlowMaterial();
@@ -152,7 +146,7 @@ scene.add(flowerGlow);
 
 const flowerCoreGlowMaterial = createGlowMaterial();
 flowerCoreGlowMaterial.uniforms.uColor.value.setRGB(1.45, 0.78, 0.38);
-const flowerCoreGlow = new THREE.Mesh(new THREE.PlaneGeometry(1.9, 1.25), flowerCoreGlowMaterial);
+const flowerCoreGlow = new THREE.Mesh(new THREE.PlaneGeometry(1.55, 1.55), flowerCoreGlowMaterial);
 flowerCoreGlow.position.set(FLOWER_CENTER.x + 0.02, -0.86, FLOWER_CENTER.z + 0.08);
 scene.add(flowerCoreGlow);
 
@@ -387,10 +381,8 @@ const scrollState = {
 const cameraTarget = new THREE.Vector3();
 
 const applyScene = (progress: number, time: number) => {
-  const p = clamp01(progress);
+  const sceneP = clamp01(progress);
   setWebglLive(sceneReady && !sceneDisabled);
-  setFallbackBlend(testMode || captureMode ? 1 : p);
-  const sceneP = testMode || captureMode ? p : clamp01((p - 0.04) / 0.96);
   const travelPulse = Math.sin(sceneP * Math.PI);
   const flowerExit = 1 - THREE.MathUtils.smoothstep(sceneP, 0.18, 0.4);
   const landscapeExit = 1 - THREE.MathUtils.smoothstep(sceneP, 0.24, 0.43);
@@ -413,7 +405,7 @@ const applyScene = (progress: number, time: number) => {
   galaxyMaterial.uniforms.uTime.value = time;
   starMaterial.uniforms.uTime.value = time;
   terrainMaterial.uniforms.uTime.value = time;
-  terrainMaterial.uniforms.uOpacity.value = 0.94 * landscapeExit;
+  terrainMaterial.uniforms.uOpacity.value = 1.0 * landscapeExit;
   foreground.visible = landscapeExit > 0.002;
 
   const shadowDirection = terrainMaterial.uniforms.uShadowDir.value as THREE.Vector2;
@@ -425,7 +417,7 @@ const applyScene = (progress: number, time: number) => {
   flowerGlowMaterial.uniforms.uOpacity.value = 0.98 * flowerExit;
   flowerGlow.visible = flowerExit > 0.002;
   flowerGlow.quaternion.copy(camera.quaternion);
-  flowerCoreGlowMaterial.uniforms.uOpacity.value = 0.58 * flowerExit;
+  flowerCoreGlowMaterial.uniforms.uOpacity.value = 0.30 * flowerExit;
   flowerCoreGlow.visible = flowerExit > 0.002;
   flowerCoreGlow.quaternion.copy(camera.quaternion);
   galaxyGlowMaterial.uniforms.uOpacity.value = 0.3;
@@ -500,7 +492,6 @@ const startRendering = async () => {
     sceneReady = true;
     setSceneState('ready');
     setWebglLive(true);
-    setFallbackBlend(testMode || captureMode ? 1 : scrollState.progress);
   } catch (error) {
     console.error('Bontr scene shader preparation failed.', error);
     sceneDisabled = true;
@@ -525,7 +516,6 @@ canvas.addEventListener('webglcontextlost', () => {
   sceneDisabled = true;
   sceneReady = false;
   setWebglLive(false);
-  setFallbackBlend(0);
   setSceneState('failed');
   renderer.setAnimationLoop(null);
 });
