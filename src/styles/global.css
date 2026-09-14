@@ -72,6 +72,12 @@ a {
   object-fit: cover;
   object-position: center;
   background: var(--page);
+  opacity: 0;
+}
+
+.scene[data-scene-state='failed'] .scene__fallback,
+.scene[data-scene-state='lost'] .scene__fallback {
+  opacity: 1;
 }
 
 .scene__canvas {

@@ -33,8 +33,8 @@ const halton = (index, base) => {
 };
 const lerp = (a, b, t) => a + (b - a) * t;
 
-sampleRows('source-data/home-morph.source.f32', 'public/data/home-morph.f32', 15, 90000);
-sampleRows('source-data/home-terrain.source.f32', 'public/data/home-terrain.f32', 7, 46000);
+sampleRows('source-data/home-morph.source.f32', 'src/assets/scene/home-morph.f32', 15, 90000);
+sampleRows('source-data/home-terrain.source.f32', 'src/assets/scene/home-terrain.f32', 7, 46000);
 
 const starCount = 45000;
 const stride = 9;
@@ -60,5 +60,5 @@ for (let index = 0; index < starCount; index += 1) {
   stars[offset + 7] = hash01(index, 25) < 0.008 ? 1 : 0;
   stars[offset + 8] = seed;
 }
-fs.writeFileSync('public/data/home-stars.f32', Buffer.from(stars.buffer));
-console.log(`public/data/home-stars.f32: ${starCount} baked rows`);
+fs.writeFileSync('src/assets/scene/home-stars.f32', Buffer.from(stars.buffer));
+console.log(`src/assets/scene/home-stars.f32: ${starCount} baked rows`);

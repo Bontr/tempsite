@@ -1,9 +1,8 @@
 ---
-const baseUrl = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL : `${import.meta.env.BASE_URL}/`;
-const fallbackSrc = `${baseUrl}images/hero-fallback.png`;
+import fallbackSrc from '../../assets/scene/hero-fallback.png?url';
 ---
-<div class="scene" data-parallax-scene aria-hidden="true">
-  <img class="scene__fallback" src={fallbackSrc} alt="" decoding="async" fetchpriority="high" />
+<div class="scene" data-parallax-scene data-scene-state="loading" aria-hidden="true">
+  <img class="scene__fallback" src={fallbackSrc} alt="" decoding="async" fetchpriority="low" />
   <canvas class="scene__canvas" data-scene-canvas></canvas>
   <div class="scene__vignette"></div>
 </div>

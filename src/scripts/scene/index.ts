@@ -24,6 +24,11 @@ const canvas = document.querySelector<HTMLCanvasElement>('[data-scene-canvas]');
 const home = document.querySelector<HTMLElement>('.home');
 const fieldCopy = document.querySelector<HTMLElement>('.field__copy');
 if (!canvas || !home) throw new Error('Bontr scene mount was not found.');
+const sceneRoot = canvas.closest<HTMLElement>('[data-parallax-scene]');
+const setSceneState = (state: 'loading' | 'ready' | 'lost' | 'failed') => {
+  canvas.dataset.sceneState = state;
+  if (sceneRoot) sceneRoot.dataset.sceneState = state;
+};
 
 const sceneParams = new URLSearchParams(window.location.search);
 const testMode = sceneParams.has('scene-test');
@@ -43,15 +48,27 @@ if (window.location.hash) {
 window.scrollTo(0, 0);
 window.addEventListener('pageshow', () => window.scrollTo(0, 0), { once: true });
 
-canvas.dataset.sceneState = 'loading';
-const { morph, terrain, stars } = await loadBakedSceneData();
-
-const renderer = new THREE.WebGLRenderer({
-  canvas,
-  antialias: true,
-  alpha: false,
-  powerPreference: 'high-performance',
+setSceneState('loading');
+const bakedSceneData = await loadBakedSceneData().catch((error) => {
+  console.error('Bontr scene data failed to load.', error);
+  setSceneState('failed');
+  throw error;
 });
+const { morph, terrain, stars } = bakedSceneData;
+
+let renderer: THREE.WebGLRenderer;
+try {
+  renderer = new THREE.WebGLRenderer({
+    canvas,
+    antialias: true,
+    alpha: false,
+    powerPreference: 'high-performance',
+  });
+} catch (error) {
+  console.error('Bontr WebGL renderer failed to initialize.', error);
+  setSceneState('failed');
+  throw error;
+}
 renderer.setClearColor(0x020202, 1);
 renderer.setPixelRatio(initialPixelRatio);
 renderer.setSize(window.innerWidth, window.innerHeight, false);
@@ -81,8 +98,8 @@ const galaxyMaterial = createParticleMaterial(initialPixelRatio, {
 });
 const starMaterial = createParticleMaterial(initialPixelRatio, {
   opacity: 0.80,
-  twinkleStrength: 0.62,
-  twinkleRate: 0.90,
+  twinkleStrength: 0.0,
+  twinkleRate: 0.0,
   driftStrength: 0,
 });
 const terrainMaterial = createTerrainPointMaterial(initialPixelRatio, 1.0);
@@ -440,16 +457,20 @@ ScrollTrigger.refresh();
 const startRendering = async () => {
   applyScene(scrollState.progress, 0);
   try {
-    await renderer.compileAsync(scene, camera);
+    renderer.compile(scene, camera);
     renderer.render(scene, camera);
+    renderer.getContext().finish();
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
     renderer.render(scene, camera);
-    canvas.dataset.sceneState = 'ready';
+    renderer.getContext().finish();
+    setSceneState('ready');
   } catch (error) {
     console.error('Bontr scene shader preparation failed.', error);
-    canvas.dataset.sceneState = 'failed';
+    setSceneState('failed');
     return;
   }
+
+  if (testMode) return;
 
   const startedAt = performance.now();
   renderer.setAnimationLoop((timeMs) => {
@@ -462,11 +483,12 @@ void startRendering();
 
 canvas.addEventListener('webglcontextlost', (event) => {
   event.preventDefault();
-  canvas.dataset.sceneState = 'lost';
+  setSceneState('lost');
   renderer.setAnimationLoop(null);
 });
 canvas.addEventListener('webglcontextrestored', () => {
-  window.location.reload();
+  setSceneState('loading');
+  void startRendering();
 });
 
 window.addEventListener('pagehide', () => {

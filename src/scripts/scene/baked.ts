@@ -1,5 +1,9 @@
 import * as THREE from 'three';
 
+import morphAssetUrl from '../../assets/scene/home-morph.f32?url';
+import terrainAssetUrl from '../../assets/scene/home-terrain.f32?url';
+import starAssetUrl from '../../assets/scene/home-stars.f32?url';
+
 const MORPH_STRIDE = 15;
 const TERRAIN_STRIDE = 7;
 const STAR_STRIDE = 9;
@@ -32,7 +36,8 @@ const validateFloats = (data: Float32Array, stride: number, label: string) => {
 };
 
 const loadFloatArray = async (path: string, stride: number, label: string) => {
-  const response = await fetch(new URL(path, document.baseURI), { cache: 'force-cache' });
+  const url = new URL(path, document.baseURI);
+  const response = await fetch(url, { cache: 'force-cache' });
   if (!response.ok) throw new Error(`Failed to load ${label}: ${response.status}`);
   const buffer = await response.arrayBuffer();
   if (buffer.byteLength % Float32Array.BYTES_PER_ELEMENT !== 0) {
@@ -45,9 +50,9 @@ const loadFloatArray = async (path: string, stride: number, label: string) => {
 
 export const loadBakedSceneData = async () => {
   const [morph, terrain, stars] = await Promise.all([
-    loadFloatArray('data/home-morph.f32', MORPH_STRIDE, 'home morph data'),
-    loadFloatArray('data/home-terrain.f32', TERRAIN_STRIDE, 'home terrain data'),
-    loadFloatArray('data/home-stars.f32', STAR_STRIDE, 'home star data'),
+    loadFloatArray(morphAssetUrl, MORPH_STRIDE, 'home morph data'),
+    loadFloatArray(terrainAssetUrl, TERRAIN_STRIDE, 'home terrain data'),
+    loadFloatArray(starAssetUrl, STAR_STRIDE, 'home star data'),
   ]);
   return { morph, terrain, stars };
 };
