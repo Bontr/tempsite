@@ -36,7 +36,7 @@ const lerp = (a, b, t) => a + (b - a) * t;
 sampleRows('source-data/home-morph.source.f32', 'public/data/home-morph.f32', 15, 90000);
 sampleRows('source-data/home-terrain.source.f32', 'public/data/home-terrain.f32', 7, 46000);
 
-const starCount = 12000;
+const starCount = 30000;
 const stride = 9;
 const stars = new Float32Array(starCount * stride);
 const cool = [0.72, 0.78, 0.84];
@@ -52,12 +52,12 @@ for (let index = 0; index < starCount; index += 1) {
   stars[offset + 2] = -7 - ((halton(sequence, 5) + jitterZ + 1) % 1) * 18;
   const seed = hash01(index, 20260909);
   const warmth = seed < 0.08 ? 0.55 + hash01(index, 21) * 0.45 : 0;
-  const brightness = 0.52 + hash01(index, 22) * 0.5;
+  const brightness = 0.58 + hash01(index, 22) * 0.58;
   stars[offset + 3] = lerp(cool[0], warm[0], warmth) * brightness;
   stars[offset + 4] = lerp(cool[1], warm[1], warmth) * brightness;
   stars[offset + 5] = lerp(cool[2], warm[2], warmth) * brightness;
-  stars[offset + 6] = 0.55 + hash01(index, 23) * 0.9 + (hash01(index, 24) < 0.018 ? 1.2 : 0);
-  stars[offset + 7] = hash01(index, 25) < 0.012 ? 1 : 0;
+  stars[offset + 6] = 0.30 + hash01(index, 23) * 0.56 + (hash01(index, 24) < 0.012 ? 1.25 : 0);
+  stars[offset + 7] = hash01(index, 25) < 0.008 ? 1 : 0;
   stars[offset + 8] = seed;
 }
 fs.writeFileSync('public/data/home-stars.f32', Buffer.from(stars.buffer));

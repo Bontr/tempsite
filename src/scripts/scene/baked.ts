@@ -18,8 +18,8 @@ export const getSceneQuality = (): SceneQuality => {
   const cores = navigator.hardwareConcurrency || 8;
   const memory = (navigator as Navigator & { deviceMemory?: number }).deviceMemory ?? 8;
   const constrained = cores <= 4 || memory <= 4;
-  if (mobile || constrained) return { morphCount: 42000, terrainCount: 24000, starCount: 6500 };
-  return { morphCount: 90000, terrainCount: 46000, starCount: 12000 };
+  if (mobile || constrained) return { morphCount: 42000, terrainCount: 24000, starCount: 14000 };
+  return { morphCount: 90000, terrainCount: 46000, starCount: 30000 };
 };
 
 const validateFloats = (data: Float32Array, stride: number, label: string) => {
@@ -72,6 +72,7 @@ const createStaticGeometry = (
   glyphOffset: number | null,
   seedOffset: number | null,
   seedSalt: number,
+  sizeScale = 1,
 ) => {
   const total = Math.floor(data.length / stride);
   const count = Math.min(total, countLimit);
@@ -91,7 +92,7 @@ const createStaticGeometry = (
     colors[target] = data[source + colorOffset];
     colors[target + 1] = data[source + colorOffset + 1];
     colors[target + 2] = data[source + colorOffset + 2];
-    sizes[index] = data[source + sizeOffset];
+    sizes[index] = data[source + sizeOffset] * sizeScale;
     glyphs[index] = glyphOffset === null ? (hash01(sourceIndex, seedSalt + 17) < 0.008 ? 1 : 0) : data[source + glyphOffset];
     seeds[index] = seedOffset === null ? hash01(sourceIndex, seedSalt) : data[source + seedOffset];
   }
@@ -107,7 +108,7 @@ const createStaticGeometry = (
 };
 
 export const createFlowerGeometry = (data: Float32Array, count: number) =>
-  createStaticGeometry(data, MORPH_STRIDE, count, 0, 6, 12, 14, null, 1906);
+  createStaticGeometry(data, MORPH_STRIDE, count, 0, 6, 12, 14, null, 1906, 0.78);
 
 export const createGalaxyGeometry = (data: Float32Array, count: number) =>
   createStaticGeometry(data, MORPH_STRIDE, count, 3, 9, 13, null, null, 31415);

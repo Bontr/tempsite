@@ -13,7 +13,6 @@ import {
   terrainHeight,
 } from './baked';
 import {
-  createCursorRepulsionUniforms,
   createGlowMaterial,
   createParticleMaterial,
   createTerrainPointMaterial,
@@ -56,12 +55,11 @@ renderer.setPixelRatio(initialPixelRatio);
 renderer.setSize(window.innerWidth, window.innerHeight, false);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.17;
+renderer.toneMappingExposure = 1.30;
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x020202);
 const camera = new THREE.PerspectiveCamera(mobile ? 52 : 44, window.innerWidth / window.innerHeight, 0.1, 70);
-const cursorRepulsion = createCursorRepulsionUniforms();
 
 const flowerGeometry = createFlowerGeometry(morph, quality.morphCount);
 const galaxyGeometry = createGalaxyGeometry(morph, quality.morphCount);
@@ -69,23 +67,23 @@ const terrainGeometry = createTerrainGeometry(terrain, quality.terrainCount);
 const starGeometry = createStarGeometry(stars, quality.starCount);
 
 
-const flowerMaterial = createParticleMaterial(initialPixelRatio, cursorRepulsion, {
-  opacity: 0.98,
-  twinkleStrength: 0.1,
-  twinkleRate: 0.62,
+const flowerMaterial = createParticleMaterial(initialPixelRatio, {
+  opacity: 1.0,
+  twinkleStrength: 0.0,
+  twinkleRate: 0.0,
 });
-const galaxyMaterial = createParticleMaterial(initialPixelRatio, cursorRepulsion, {
-  opacity: 0.96,
-  twinkleStrength: 0.18,
-  twinkleRate: 0.84,
+const galaxyMaterial = createParticleMaterial(initialPixelRatio, {
+  opacity: 0.99,
+  twinkleStrength: 0.0,
+  twinkleRate: 0.0,
 });
-const starMaterial = createParticleMaterial(initialPixelRatio, cursorRepulsion, {
-  opacity: 0.54,
-  twinkleStrength: 0.48,
-  twinkleRate: 1.18,
-  driftStrength: reduceMotion ? 0 : 0.012,
+const starMaterial = createParticleMaterial(initialPixelRatio, {
+  opacity: 0.68,
+  twinkleStrength: 0.44,
+  twinkleRate: 0.95,
+  driftStrength: 0,
 });
-const terrainMaterial = createTerrainPointMaterial(initialPixelRatio, cursorRepulsion, 0.94);
+const terrainMaterial = createTerrainPointMaterial(initialPixelRatio, 1.0);
 
 const flowerPoints = new THREE.Points(flowerGeometry, flowerMaterial);
 flowerPoints.frustumCulled = false;
@@ -105,17 +103,6 @@ scene.add(foreground);
 const starPoints = new THREE.Points(starGeometry, starMaterial);
 starPoints.frustumCulled = false;
 scene.add(starPoints);
-
-const flowerCoreMaterial = new THREE.MeshBasicMaterial({
-  color: 0x010101,
-  transparent: true,
-  opacity: 0.9,
-  depthWrite: true,
-});
-const flowerCore = new THREE.Mesh(new THREE.SphereGeometry(0.5, 24, 16), flowerCoreMaterial);
-flowerCore.position.copy(FLOWER_CENTER).add(new THREE.Vector3(0.12, -0.42, 0.08));
-flowerCore.scale.set(1.18, 0.7, 0.76);
-scene.add(flowerCore);
 
 const flowerGlowMaterial = createGlowMaterial();
 const flowerGlow = new THREE.Mesh(new THREE.PlaneGeometry(4.15, 2.75), flowerGlowMaterial);
@@ -350,7 +337,6 @@ const scrollState = {
     ? THREE.MathUtils.clamp(requestedTestProgress, 0, 1)
     : 0,
 };
-const pointer = { x: 0, y: 0, targetX: 0, targetY: 0, repulsion: 0, repulsionTarget: 0 };
 const cameraTarget = new THREE.Vector3();
 
 const applyScene = (progress: number, time: number) => {
@@ -369,15 +355,6 @@ const applyScene = (progress: number, time: number) => {
 
   cameraCurve.getPointAt(p, camera.position);
   targetCurve.getPointAt(p, cameraTarget);
-  pointer.x += (pointer.targetX - pointer.x) * 0.045;
-  pointer.y += (pointer.targetY - pointer.y) * 0.045;
-  pointer.repulsion += (pointer.repulsionTarget - pointer.repulsion) * (pointer.repulsionTarget > pointer.repulsion ? 0.3 : 0.12);
-  cursorRepulsion.uPointer.value.set(pointer.targetX, pointer.targetY);
-  cursorRepulsion.uPointerActive.value = testMode ? 0 : pointer.repulsion;
-  camera.position.x += pointer.x * (0.18 - p * 0.07);
-  camera.position.y += pointer.y * (0.12 - p * 0.04);
-  cameraTarget.x += pointer.x * 0.08;
-  cameraTarget.y += pointer.y * 0.055;
   camera.lookAt(cameraTarget);
 
   flowerMaterial.uniforms.uTime.value = time;
@@ -395,9 +372,7 @@ const applyScene = (progress: number, time: number) => {
   terrainMaterial.uniforms.uShadowLength.value = 4.9;
   terrainMaterial.uniforms.uShadowOpacity.value = 0.94;
 
-  flowerCoreMaterial.opacity = 0.82 * flowerExit;
-  flowerCore.visible = flowerExit > 0.002;
-  flowerGlowMaterial.uniforms.uOpacity.value = 0.52 * flowerExit;
+  flowerGlowMaterial.uniforms.uOpacity.value = 0.62 * flowerExit;
   flowerGlow.visible = flowerExit > 0.002;
   flowerGlow.quaternion.copy(camera.quaternion);
   galaxyGlowMaterial.uniforms.uOpacity.value = 0.3;
@@ -444,18 +419,6 @@ if (reduceMotion || testMode) {
   });
 }
 
-const updatePointerTarget = (clientX: number, clientY: number) => {
-  if (testMode) return;
-  pointer.targetX = (clientX / Math.max(1, window.innerWidth) - 0.5) * 2;
-  pointer.targetY = (0.5 - clientY / Math.max(1, window.innerHeight)) * 2;
-  pointer.repulsionTarget = 1;
-};
-window.addEventListener('pointermove', (event) => {
-  if (event.pointerType !== 'touch') updatePointerTarget(event.clientX, event.clientY);
-}, { passive: true });
-document.documentElement.addEventListener('pointerleave', () => { pointer.repulsionTarget = 0; }, { passive: true });
-window.addEventListener('blur', () => { pointer.repulsionTarget = 0; }, { passive: true });
-
 const resize = () => {
   const width = window.innerWidth;
   const height = window.innerHeight;
@@ -464,9 +427,6 @@ const resize = () => {
   renderer.setSize(width, height, false);
   camera.aspect = width / Math.max(1, height);
   camera.updateProjectionMatrix();
-  cursorRepulsion.uPointerAspect.value = width / Math.max(1, height);
-  cursorRepulsion.uPointerRadius.value = THREE.MathUtils.clamp(130 / Math.max(1, height), 0.07, 0.2);
-  cursorRepulsion.uPointerClearRadius.value = THREE.MathUtils.clamp(28 / Math.max(1, height), 0.018, 0.055);
   [flowerMaterial, galaxyMaterial, starMaterial, terrainMaterial].forEach((material) => {
     material.uniforms.uPixelRatio.value = nextPixelRatio;
   });
@@ -501,10 +461,9 @@ window.addEventListener('pagehide', () => {
   ScrollTrigger.getAll().forEach((trigger) => trigger.kill());
   [flowerGeometry, galaxyGeometry, terrainGeometry, starGeometry, contactShadowGeometry, travelGeometry]
     .forEach((geometry) => geometry.dispose());
-  [flowerMaterial, galaxyMaterial, terrainMaterial, starMaterial, flowerCoreMaterial, flowerGlowMaterial,
+  [flowerMaterial, galaxyMaterial, terrainMaterial, starMaterial, flowerGlowMaterial,
     galaxyGlowMaterial, silhouetteMaterial, personHaloMaterial, contactShadowMaterial, travelMaterial]
     .forEach((material) => material.dispose());
-  flowerCore.geometry.dispose();
   person.traverse((object) => {
     if (object instanceof THREE.Mesh) object.geometry.dispose();
   });

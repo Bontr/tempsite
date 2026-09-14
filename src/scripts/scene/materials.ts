@@ -1,59 +1,11 @@
 import * as THREE from 'three';
 
-export type CursorRepulsionUniforms = {
-  uPointer: { value: THREE.Vector2 };
-  uPointerAspect: { value: number };
-  uPointerRadius: { value: number };
-  uPointerClearRadius: { value: number };
-  uPointerStrength: { value: number };
-  uPointerActive: { value: number };
-};
-
 export type ParticleMaterialOptions = {
   opacity?: number;
   twinkleStrength?: number;
   twinkleRate?: number;
   driftStrength?: number;
 };
-
-export const createCursorRepulsionUniforms = (): CursorRepulsionUniforms => ({
-  uPointer: { value: new THREE.Vector2(2, 2) },
-  uPointerAspect: { value: window.innerWidth / Math.max(1, window.innerHeight) },
-  uPointerRadius: { value: 0.165 },
-  uPointerClearRadius: { value: 0.036 },
-  uPointerStrength: { value: 1 },
-  uPointerActive: { value: 0 },
-});
-
-const cursorRepulsionVertex = `
-uniform vec2 uPointer;
-uniform float uPointerAspect;
-uniform float uPointerRadius;
-uniform float uPointerClearRadius;
-uniform float uPointerStrength;
-uniform float uPointerActive;
-
-vec4 repelFromPointer(vec4 clipPosition, float seed) {
-  if (uPointerActive <= 0.001 || clipPosition.w <= 0.0) return clipPosition;
-  vec2 ndc = clipPosition.xy / clipPosition.w;
-  vec2 delta = ndc - uPointer;
-  vec2 metric = vec2(delta.x * uPointerAspect, delta.y);
-  float distanceToPointer = length(metric);
-  if (distanceToPointer >= uPointerRadius) return clipPosition;
-
-  vec2 fallback = vec2(cos(seed * 6.2831853), sin(seed * 6.2831853));
-  vec2 direction = distanceToPointer > 0.0001 ? metric / distanceToPointer : fallback;
-  float normalizedDistance = clamp(distanceToPointer / uPointerRadius, 0.0, 1.0);
-  float influence = 1.0 - smoothstep(0.0, 1.0, normalizedDistance);
-  float warpPush = influence * uPointerRadius * 0.28;
-  float displacedDistance = max(distanceToPointer + warpPush, uPointerClearRadius);
-  float finalDistance = mix(distanceToPointer, displacedDistance, uPointerStrength * uPointerActive);
-  vec2 displacedMetric = direction * finalDistance;
-  vec2 displacedNdc = uPointer + vec2(displacedMetric.x / uPointerAspect, displacedMetric.y);
-  clipPosition.xy = displacedNdc * clipPosition.w;
-  return clipPosition;
-}
-`;
 
 const pointFragment = `
 uniform float uOpacity;
@@ -78,7 +30,6 @@ void main() {
 `;
 
 const particleVertex = `
-${cursorRepulsionVertex}
 uniform float uTime;
 uniform float uPixelRatio;
 uniform float uTwinkleStrength;
@@ -104,7 +55,7 @@ void main() {
   vec4 mvPosition = modelViewMatrix * vec4(localPosition, 1.0);
   float distanceScale = clamp(10.8 / max(1.0, -mvPosition.z), 0.46, 1.8);
   gl_PointSize = clamp(aSize * uPixelRatio * distanceScale, 1.0, 8.5 * uPixelRatio);
-  gl_Position = repelFromPointer(projectionMatrix * mvPosition, aSeed);
+  gl_Position = projectionMatrix * mvPosition;
   float wave = 0.5 + 0.5 * sin(aSeed * 91.7 + uTime * uTwinkleRate);
   float flare = pow(max(0.0, sin(aSeed * 47.1 + uTime * uTwinkleRate * 0.37)), 14.0);
   vTwinkle = 1.0 + uTwinkleStrength * ((wave - 0.5) * 0.55 + flare * 0.9);
@@ -114,7 +65,6 @@ void main() {
 `;
 
 const terrainVertex = `
-${cursorRepulsionVertex}
 uniform float uTime;
 uniform float uPixelRatio;
 uniform vec2 uShadowOrigin;
@@ -147,9 +97,8 @@ void main() {
   vec4 mvPosition = modelViewMatrix * vec4(localPosition, 1.0);
   float distanceScale = clamp(9.8 / max(1.0, -mvPosition.z), 0.46, 1.75);
   gl_PointSize = clamp(aSize * uPixelRatio * distanceScale, 1.0, 7.0 * uPixelRatio);
-  gl_Position = repelFromPointer(projectionMatrix * mvPosition, aSeed);
-  float shimmer = 0.5 + 0.5 * sin(aSeed * 61.7 + uTime * 0.38);
-  vTwinkle = 0.94 + shimmer * 0.08;
+  gl_Position = projectionMatrix * mvPosition;
+  vTwinkle = 1.0;
   vColor = aColor * (1.0 - vShadow * 0.78);
   vGlyph = aGlyph;
 }
@@ -180,11 +129,9 @@ void main() {
 
 export const createParticleMaterial = (
   pixelRatio: number,
-  cursorRepulsion: CursorRepulsionUniforms,
   options: ParticleMaterialOptions = {},
 ) => new THREE.ShaderMaterial({
   uniforms: {
-    ...cursorRepulsion,
     uTime: { value: 0 },
     uPixelRatio: { value: pixelRatio },
     uOpacity: { value: options.opacity ?? 1 },
@@ -202,11 +149,9 @@ export const createParticleMaterial = (
 
 export const createTerrainPointMaterial = (
   pixelRatio: number,
-  cursorRepulsion: CursorRepulsionUniforms,
   opacity = 1,
 ) => new THREE.ShaderMaterial({
   uniforms: {
-    ...cursorRepulsion,
     uTime: { value: 0 },
     uPixelRatio: { value: pixelRatio },
     uOpacity: { value: opacity },
