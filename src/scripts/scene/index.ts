@@ -13,7 +13,6 @@ import {
   terrainHeight,
 } from './baked';
 import {
-  createDensityCarrierMaterial,
   createParticleMaterial,
   createTerrainPointMaterial,
 } from './materials';
@@ -61,12 +60,23 @@ const initializeScene = async () => {
   setSceneState('loading');
   let renderer: THREE.WebGLRenderer;
 try {
-  renderer = new THREE.WebGLRenderer({
-    canvas,
+  const context = canvas.getContext('webgl2', {
     antialias: true,
     alpha: false,
     powerPreference: 'high-performance',
   });
+  if (!context) throw new Error('WebGL 2 is unavailable.');
+
+  // WebGL2 guarantees at least 16 vertex attributes. Some privacy tools return
+  // randomized, spec-invalid lower values; Three.js then leaves valid attributes disabled.
+  const nativeGetParameter = context.getParameter.bind(context);
+  Object.defineProperty(context, 'getParameter', {
+    configurable: true,
+    value: (parameter: GLenum) => parameter === context.MAX_VERTEX_ATTRIBS
+      ? Math.max(16, Number(nativeGetParameter(parameter)) || 0)
+      : nativeGetParameter(parameter),
+  });
+  renderer = new THREE.WebGLRenderer({ canvas, context });
 } catch (error) {
   console.error('Bontr WebGL renderer failed to initialize.', error);
   setSceneState('failed');
@@ -121,37 +131,24 @@ const starMaterial = createParticleMaterial(initialPixelRatio, {
   intensity: 1.06,
   sizeMultiplier: 0.98,
 });
-const terrainMaterial = createTerrainPointMaterial(initialPixelRatio, 1.0, 1.14, 1.14);
-const flowerCarrierMaterial = createDensityCarrierMaterial(initialPixelRatio, 2.05, 0.082, 0.86);
-const galaxyCarrierMaterial = createDensityCarrierMaterial(initialPixelRatio, 2.20, 0.092, 0.84);
+const terrainMaterial = createTerrainPointMaterial(initialPixelRatio, 1.0, 1.22, 1.26);
 
-const flowerCarrierPoints = new THREE.Points(flowerGeometry, flowerCarrierMaterial);
-flowerCarrierPoints.frustumCulled = false;
-flowerCarrierPoints.renderOrder = -4;
-scene.add(flowerCarrierPoints);
-
-const flowerPoints = new THREE.Points(flowerGeometry, flowerMaterial);
+const flowerPoints = new THREE.Mesh(flowerGeometry, flowerMaterial);
 flowerPoints.frustumCulled = false;
 scene.add(flowerPoints);
 
-const galaxyCarrierPoints = new THREE.Points(galaxyGeometry, galaxyCarrierMaterial);
-galaxyCarrierPoints.position.y = -worldGap;
-galaxyCarrierPoints.frustumCulled = false;
-galaxyCarrierPoints.renderOrder = -4;
-scene.add(galaxyCarrierPoints);
-
-const galaxyPoints = new THREE.Points(galaxyGeometry, galaxyMaterial);
+const galaxyPoints = new THREE.Mesh(galaxyGeometry, galaxyMaterial);
 galaxyPoints.position.y = -worldGap;
 galaxyPoints.frustumCulled = false;
 scene.add(galaxyPoints);
 
 const foreground = new THREE.Group();
-const terrainPoints = new THREE.Points(terrainGeometry, terrainMaterial);
+const terrainPoints = new THREE.Mesh(terrainGeometry, terrainMaterial);
 terrainPoints.frustumCulled = false;
 foreground.add(terrainPoints);
 scene.add(foreground);
 
-const starPoints = new THREE.Points(starGeometry, starMaterial);
+const starPoints = new THREE.Mesh(starGeometry, starMaterial);
 starPoints.frustumCulled = false;
 starPoints.renderOrder = -20;
 scene.add(starPoints);
@@ -189,6 +186,24 @@ addLimb(-0.08, 0.2, 0.08, 0.42, 0.026);
 addLimb(0.08, 0.2, -0.08, 0.42, 0.026);
 addLimb(-0.1, 0.49, -0.18, 0.34, 0.022);
 addLimb(0.1, 0.49, 0.18, 0.34, 0.022);
+
+const personRimMaterial = new THREE.MeshBasicMaterial({
+  color: 0xf0ad69,
+  transparent: true,
+  opacity: 0.20,
+  depthWrite: false,
+  depthTest: false,
+  side: THREE.BackSide,
+  blending: THREE.AdditiveBlending,
+});
+const personRim = person.clone(true);
+personRim.traverse((object) => {
+  if (!(object instanceof THREE.Mesh)) return;
+  object.material = personRimMaterial;
+  object.scale.multiplyScalar(1.14);
+  object.renderOrder = 19;
+});
+foreground.add(personRim);
 person.traverse((object) => {
   if (object instanceof THREE.Mesh) object.renderOrder = 20;
 });
@@ -401,13 +416,9 @@ const applyScene = (progress: number, time: number) => {
 
   flowerMaterial.uniforms.uTime.value = time;
   flowerMaterial.uniforms.uOpacity.value = 1.16 * flowerExit;
-  flowerCarrierMaterial.uniforms.uOpacity.value = 0.082 * flowerExit;
   flowerPoints.visible = flowerExit > 0.002;
-  flowerCarrierPoints.visible = flowerExit > 0.002;
-  galaxyCarrierMaterial.uniforms.uOpacity.value = 0.092;
   galaxyMaterial.uniforms.uTime.value = time;
   starMaterial.uniforms.uTime.value = time;
-  terrainMaterial.uniforms.uTime.value = time;
   terrainMaterial.uniforms.uOpacity.value = 1.0 * landscapeExit;
   foreground.visible = landscapeExit > 0.002;
 
@@ -415,10 +426,11 @@ const applyScene = (progress: number, time: number) => {
   shadowDirection.set((personX - FLOWER_CENTER.x) * 0.24, (personZ - FLOWER_CENTER.z) * 1.34).normalize();
   (terrainMaterial.uniforms.uShadowOrigin.value as THREE.Vector2).set(personX, personZ);
   terrainMaterial.uniforms.uShadowLength.value = 4.9;
-  terrainMaterial.uniforms.uShadowOpacity.value = 0.94;
+  terrainMaterial.uniforms.uShadowOpacity.value = 0.38;
 
   silhouetteMaterial.opacity = landscapeExit;
-  contactShadowMaterial.uniforms.uOpacity.value = 0.36 * landscapeExit;
+  personRimMaterial.opacity = 0.20 * landscapeExit;
+  contactShadowMaterial.uniforms.uOpacity.value = 0.26 * landscapeExit;
 
   flowerOrbitA.material.opacity = 0.18 * flowerExit;
   flowerOrbitB.material.opacity = 0.08 * flowerExit;
@@ -465,8 +477,8 @@ const resize = () => {
   renderer.setSize(width, height, false);
   camera.aspect = width / Math.max(1, height);
   camera.updateProjectionMatrix();
-  [flowerMaterial, galaxyMaterial, starMaterial, terrainMaterial, flowerCarrierMaterial, galaxyCarrierMaterial].forEach((material) => {
-    material.uniforms.uPixelRatio.value = nextPixelRatio;
+  [flowerMaterial, galaxyMaterial, starMaterial, terrainMaterial].forEach((material) => {
+    material.uniforms.uViewport.value.set(width, height);
   });
 };
 window.addEventListener('resize', resize, { passive: true });
@@ -479,12 +491,11 @@ const startRendering = async () => {
     await renderer.compileAsync(scene, camera);
     renderer.render(scene, camera);
 
-    // Do not expose the canvas until every queued draw has actually completed.
-    // This prevents refreshes from showing lines/partial point clouds while the GPU is still uploading.
+    // Do not expose the canvas until every queued instanced-particle draw has completed.
     renderer.getContext().finish();
-    const expectedPoints = quality.morphCount * 4 + quality.terrainCount + quality.starCount;
-    if (renderer.info.render.points < expectedPoints) {
-      throw new Error(`Incomplete startup frame: ${renderer.info.render.points}/${expectedPoints} points rendered.`);
+    const expectedParticleTriangles = (quality.morphCount * 2 + quality.terrainCount + quality.starCount) * 2;
+    if (renderer.info.render.triangles < expectedParticleTriangles) {
+      throw new Error(`Incomplete startup frame: ${renderer.info.render.triangles}/${expectedParticleTriangles} particle triangles rendered.`);
     }
 
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
@@ -528,8 +539,8 @@ window.addEventListener('pagehide', (event) => {
   ScrollTrigger.getAll().forEach((trigger) => trigger.kill());
   [flowerGeometry, galaxyGeometry, terrainGeometry, starGeometry, contactShadowGeometry, travelGeometry]
     .forEach((geometry) => geometry.dispose());
-  [flowerMaterial, galaxyMaterial, terrainMaterial, starMaterial, flowerCarrierMaterial, galaxyCarrierMaterial,
-    silhouetteMaterial, contactShadowMaterial, travelMaterial]
+  [flowerMaterial, galaxyMaterial, terrainMaterial, starMaterial,
+    silhouetteMaterial, personRimMaterial, contactShadowMaterial, travelMaterial]
     .forEach((material) => material.dispose());
   person.traverse((object) => {
     if (object instanceof THREE.Mesh) object.geometry.dispose();

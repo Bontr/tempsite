@@ -67,7 +67,11 @@ const hash01 = (index: number, salt: number) => {
 const sampledIndex = (index: number, count: number, total: number) =>
   count <= 1 ? 0 : Math.min(total - 1, Math.floor((index / (count - 1)) * (total - 1)));
 
-type ParticleProfile = (x: number, y: number, z: number) => { sizeScale: number; intensity: number };
+type ParticleProfile = (x: number, y: number, z: number) => {
+  sizeScale: number;
+  intensity: number;
+  jitter?: number;
+};
 
 const createStaticGeometry = (
   data: Float32Array,
@@ -76,7 +80,6 @@ const createStaticGeometry = (
   positionOffset: number,
   colorOffset: number,
   sizeOffset: number,
-  glyphOffset: number | null,
   seedOffset: number | null,
   seedSalt: number,
   sizeScale = 1,
@@ -86,10 +89,7 @@ const createStaticGeometry = (
   const count = Math.min(total, countLimit);
   const positions = new Float32Array(count * 3);
   const colors = new Float32Array(count * 3);
-  const sizes = new Float32Array(count);
-  const glyphs = new Float32Array(count);
-  const seeds = new Float32Array(count);
-  const intensities = new Float32Array(count);
+  const params = new Float32Array(count * 3);
 
   for (let index = 0; index < count; index += 1) {
     const sourceIndex = sampledIndex(index, count, total);
@@ -98,25 +98,32 @@ const createStaticGeometry = (
     const x = data[source + positionOffset];
     const y = data[source + positionOffset + 1];
     const z = data[source + positionOffset + 2];
-    const local = profile?.(x, y, z) ?? { sizeScale: 1, intensity: 1 };
-    positions[target] = x; positions[target + 1] = y; positions[target + 2] = z;
+    const local = profile?.(x, y, z) ?? { sizeScale: 1, intensity: 1, jitter: 0 };
+    const jitter = local.jitter ?? 0;
+    positions[target] = x + (hash01(sourceIndex, seedSalt + 101) - 0.5) * jitter;
+    positions[target + 1] = y + (hash01(sourceIndex, seedSalt + 211) - 0.5) * jitter;
+    positions[target + 2] = z + (hash01(sourceIndex, seedSalt + 307) - 0.5) * jitter;
     colors[target] = data[source + colorOffset];
     colors[target + 1] = data[source + colorOffset + 1];
     colors[target + 2] = data[source + colorOffset + 2];
-    sizes[index] = data[source + sizeOffset] * sizeScale * local.sizeScale;
-    glyphs[index] = glyphOffset === null ? (hash01(sourceIndex, seedSalt + 17) < 0.008 ? 1 : 0) : data[source + glyphOffset];
-    seeds[index] = seedOffset === null ? hash01(sourceIndex, seedSalt) : data[source + seedOffset];
-    intensities[index] = local.intensity;
+    params[target] = data[source + sizeOffset] * sizeScale * local.sizeScale;
+    params[target + 1] = seedOffset === null ? hash01(sourceIndex, seedSalt) : data[source + seedOffset];
+    params[target + 2] = local.intensity;
   }
 
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-  geometry.setAttribute('aColor', new THREE.BufferAttribute(colors, 3));
-  geometry.setAttribute('aSize', new THREE.BufferAttribute(sizes, 1));
-  geometry.setAttribute('aGlyph', new THREE.BufferAttribute(glyphs, 1));
-  geometry.setAttribute('aSeed', new THREE.BufferAttribute(seeds, 1));
-  geometry.setAttribute('aIntensity', new THREE.BufferAttribute(intensities, 1));
-  geometry.computeBoundingSphere();
+  const geometry = new THREE.InstancedBufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute([
+    -0.5, -0.5, 0,
+     0.5, -0.5, 0,
+     0.5,  0.5, 0,
+    -0.5,  0.5, 0,
+  ], 3));
+  geometry.setAttribute('uv', new THREE.Float32BufferAttribute([0, 0, 1, 0, 1, 1, 0, 1], 2));
+  geometry.setIndex([0, 1, 2, 0, 2, 3]);
+  geometry.setAttribute('aOffset', new THREE.InstancedBufferAttribute(positions, 3));
+  geometry.setAttribute('aColor', new THREE.InstancedBufferAttribute(colors, 3));
+  geometry.setAttribute('aParams', new THREE.InstancedBufferAttribute(params, 3));
+  geometry.instanceCount = count;
   return geometry;
 };
 
@@ -125,7 +132,11 @@ const flowerProfile: ParticleProfile = (x, y, z) => {
   const dy = (y - FLOWER_CENTER.y) / 2.1;
   const dz = (z - FLOWER_CENTER.z) / 2.8;
   const core = Math.exp(-(dx * dx + dy * dy + dz * dz) * 1.35);
-  return { sizeScale: 1.10 + core * 0.24, intensity: 1.0 + core * 0.82 };
+  return {
+    sizeScale: 1.16 - core * 0.24,
+    intensity: 1.0 + core * 0.72,
+    jitter: 0.10 + core * 0.04,
+  };
 };
 
 const galaxyProfile: ParticleProfile = (x, y, z) => {
@@ -133,32 +144,33 @@ const galaxyProfile: ParticleProfile = (x, y, z) => {
   const dy = (y - GALAXY_CENTER.y) / 1.05;
   const dz = (z - GALAXY_CENTER.z) / 2.5;
   const core = Math.exp(-(dx * dx + dy * dy + dz * dz) * 1.2);
-  return { sizeScale: 1.08 + core * 0.34, intensity: 1.0 + core * 1.18 };
+  return {
+    sizeScale: 1.10 - core * 0.20,
+    intensity: 1.0 + core * 0.95,
+    jitter: 0.028 + core * 0.012,
+  };
 };
 
 const terrainProfile: ParticleProfile = (x, y, z) => {
   const ridge = Math.max(0, Math.min(1, (y + 3.15) / 1.25));
-  const px = (x + 1.65) / 1.32;
-  const pz = (z - 1.7) / 0.92;
-  const radius = Math.sqrt(px * px + pz * pz);
-  const silhouettePocket = Math.exp(-radius * radius * 4.6);
-  const rim = Math.exp(-((radius - 0.92) ** 2) / 0.12);
-  const sizeScale = Math.max(0.92, 1.18 + ridge * 0.30 + rim * 0.12 - silhouettePocket * 0.18);
-  const intensity = Math.max(0.72, 1.0 + ridge * 0.44 + rim * 0.62 - silhouettePocket * 0.42);
+  const backlight = Math.exp(-(((x + 1.65) / 1.10) ** 2 + ((z - 1.08) / 0.82) ** 2));
+  const footPocket = Math.exp(-(((x + 1.65) / 0.30) ** 2 + ((z - 1.70) / 0.25) ** 2));
+  const sizeScale = Math.max(1.0, 1.20 + ridge * 0.36 + backlight * 0.14 - footPocket * 0.08);
+  const intensity = Math.max(0.92, 1.05 + ridge * 0.58 + backlight * 0.72 - footPocket * 0.18);
   return { sizeScale, intensity };
 };
 
 export const createFlowerGeometry = (data: Float32Array, count: number) =>
-  createStaticGeometry(data, MORPH_STRIDE, count, 0, 6, 12, 14, null, 1906, 1.02, flowerProfile);
+  createStaticGeometry(data, MORPH_STRIDE, count, 0, 6, 12, null, 1906, 1.02, flowerProfile);
 
 export const createGalaxyGeometry = (data: Float32Array, count: number) =>
-  createStaticGeometry(data, MORPH_STRIDE, count, 3, 9, 13, null, null, 31415, 1.04, galaxyProfile);
+  createStaticGeometry(data, MORPH_STRIDE, count, 3, 9, 13, null, 31415, 1.04, galaxyProfile);
 
 export const createTerrainGeometry = (data: Float32Array, count: number) =>
-  createStaticGeometry(data, TERRAIN_STRIDE, count, 0, 3, 6, null, null, 7741, 1.0, terrainProfile);
+  createStaticGeometry(data, TERRAIN_STRIDE, count, 0, 3, 6, null, 7741, 1.0, terrainProfile);
 
 export const createStarGeometry = (data: Float32Array, count: number) =>
-  createStaticGeometry(data, STAR_STRIDE, count, 0, 3, 6, 7, 8, 20260909, 0.96);
+  createStaticGeometry(data, STAR_STRIDE, count, 0, 3, 6, 8, 20260909, 0.96);
 
 export const terrainHeight = (x: number, z: number) =>
   -2.72 - x * 0.018 - x * x * 0.0027 +
