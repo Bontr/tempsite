@@ -145,10 +145,18 @@ const galaxyProfile: ParticleProfile = (x, y, z) => {
   const dz = (z - GALAXY_CENTER.z) / 2.5;
   const core = Math.exp(-(dx * dx + dy * dy + dz * dz) * 0.88);
   return {
-    sizeScale: 1.10 - core * 0.12,
-    intensity: 1.0 + core * 0.72,
-    jitter: 0.036 + core * 0.016,
+    sizeScale: 1.18 - core * 0.08,
+    intensity: 1.0 + core * 0.74,
+    jitter: 0.045 + core * 0.020,
   };
+};
+
+const galaxyFillProfile: ParticleProfile = (x, y, z) => {
+  const dx = (x - GALAXY_CENTER.x) / 3.25;
+  const dy = (y - GALAXY_CENTER.y) / 1.15;
+  const dz = (z - GALAXY_CENTER.z) / 2.7;
+  const core = Math.exp(-(dx * dx + dy * dy + dz * dz) * 0.72);
+  return { sizeScale: 0.92 + core * 0.06, intensity: 0.76 + core * 0.16, jitter: 0.16 + core * 0.05 };
 };
 
 const terrainProfile: ParticleProfile = (x, y, z) => {
@@ -164,7 +172,10 @@ export const createFlowerGeometry = (data: Float32Array, count: number) =>
   createStaticGeometry(data, MORPH_STRIDE, count, 0, 6, 12, null, 1906, 1.05, flowerProfile);
 
 export const createGalaxyGeometry = (data: Float32Array, count: number) =>
-  createStaticGeometry(data, MORPH_STRIDE, count, 3, 9, 13, null, 31415, 1.04, galaxyProfile);
+  createStaticGeometry(data, MORPH_STRIDE, count, 3, 9, 13, null, 31415, 1.07, galaxyProfile);
+
+export const createGalaxyFillGeometry = (data: Float32Array, count: number) =>
+  createStaticGeometry(data, MORPH_STRIDE, count, 3, 9, 13, null, 27182, 0.92, galaxyFillProfile);
 
 export const createTerrainGeometry = (data: Float32Array, count: number) =>
   createStaticGeometry(data, TERRAIN_STRIDE, count, 0, 3, 6, null, 7741, 1.0, terrainProfile);

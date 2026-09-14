@@ -32,7 +32,7 @@ void main() {
   float shape = (core * 0.90 + halo * 0.15) * (1.0 - smoothstep(0.47, 0.515, radius));
   float alpha = shape * uOpacity * vTwinkle;
   if (alpha < 0.003) discard;
-  vec3 warmTarget = vec3(1.0, 0.84, 0.66);
+  vec3 warmTarget = vec3(1.0, 0.72, 0.38);
   vec3 litColor = mix(vColor, warmTarget, density * uDensityWarmth);
   float densityCompression = mix(1.0, 0.48, density);
   gl_FragColor = vec4(litColor * uIntensity * densityCompression * (0.98 + core * 0.24 + halo * 0.05) * vTwinkle, alpha);
@@ -71,15 +71,15 @@ void main() {
   float distanceScale = clamp(10.8 / max(1.0, -mvCenter.z), 0.46, 1.8);
   float density = smoothstep(1.03, 1.50, vIntensity);
   float bloomSpread = 1.0 + density * uDensityBloom * 0.78;
-  float pixelSize = clamp(particleSize * uSizeMultiplier * distanceScale * bloomSpread, 0.8, 16.0);
+  float pixelSize = clamp(particleSize * uSizeMultiplier * distanceScale * bloomSpread, 0.55, 16.0);
   vec4 clip = projectionMatrix * mvCenter;
   clip.xy += position.xy * pixelSize * 2.0 / max(uViewport, vec2(1.0)) * clip.w;
   gl_Position = clip;
-  float twinkleSpeed = 0.025 + fract(seed * 29.17) * 0.035;
+  float twinkleSpeed = 0.075 + fract(seed * 29.17) * 0.075;
   float twinkleCycle = fract(seed * 53.71 + uTime * uTwinkleRate * twinkleSpeed);
   float twinkleEdge = min(twinkleCycle, 1.0 - twinkleCycle);
-  float twinkleMask = step(0.50, fract(seed * 11.97));
-  float blink = 1.0 - smoothstep(0.0, 0.038, twinkleEdge);
+  float twinkleMask = step(0.40, fract(seed * 11.97));
+  float blink = 1.0 - smoothstep(0.0, 0.075, twinkleEdge);
   vTwinkle = 1.0 - twinkleMask * uTwinkleStrength * blink;
   vColor = aColor;
   vUv = uv;
