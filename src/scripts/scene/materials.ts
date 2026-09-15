@@ -56,14 +56,15 @@ void main() {
   float sparkle = pow(wave, 7.0) * (0.55 + secondary * 0.45);
   float twinkleBrightness = 0.72 + wave * 0.48 + sparkle * 0.80;
   float swirlPresence = step(0.0001, abs(uSwirlAmount));
-  float swirlGlow = 0.5 + 0.5 * sin(swirlPhase);
-  float swirlShimmer = mix(1.0, 0.74 + swirlGlow * 0.52, swirlPresence);
+  float swirlWave = 0.5 + 0.5 * sin(swirlPhase);
+  float swirlPulse = smoothstep(0.18, 0.92, swirlWave);
+  float swirlShimmer = mix(1.0, 0.58 + swirlPulse * 0.92, swirlPresence);
   vFlash = eligible * sparkle * uTwinkleStrength;
   vTwinkle = mix(1.0, mix(1.0, twinkleBrightness, eligible), uTwinkleStrength) * swirlShimmer;
 
   vec4 mv = modelViewMatrix * vec4(center, 1.0);
   float distanceScale = clamp(11.5 / max(1.0, -mv.z), 0.48, 1.85);
-  float sizeLift = 1.0 + vFlash * 0.95;
+  float sizeLift = (1.0 + vFlash * 0.95) * mix(1.0, 0.80 + swirlPulse * 0.72, swirlPresence);
   float px = clamp(particleSize * uSizeMultiplier * distanceScale * sizeLift, uMinPixelSize, uMaxPixelSize);
   vec4 clip = projectionMatrix * mv;
   clip.xy += position.xy * px * 2.0 / max(uViewport, vec2(1.0)) * clip.w;
@@ -222,17 +223,19 @@ void main() {
   float swirlCos = cos(swirlAngle);
   float swirlSin = sin(swirlAngle);
   center.xy = uSwirlCenter + mat2(swirlCos, swirlSin, -swirlSin, swirlCos) * swirlOffset;
+  float swirlPresence = step(0.0001, abs(uSwirlAmount));
+  float swirlWave = 0.5 + 0.5 * sin(swirlPhase);
+  float swirlPulse = smoothstep(0.18, 0.92, swirlWave);
   vec4 mv = modelViewMatrix * vec4(center, 1.0);
   float distanceScale = clamp(11.0 / max(1.0, -mv.z), 0.48, 1.85);
-  float px = clamp(aParams.x * uSizeMultiplier * distanceScale, 1.2, 24.0);
+  float pulseSize = mix(1.0, 0.82 + swirlPulse * 0.58, swirlPresence);
+  float px = clamp(aParams.x * uSizeMultiplier * distanceScale * pulseSize, 1.2, 24.0);
   vec4 clip = projectionMatrix * mv;
   clip.xy += position.xy * px * 2.0 / max(uViewport, vec2(1.0)) * clip.w;
   gl_Position = clip;
   vUv = uv;
   vColor = aColor;
-  float swirlPresence = step(0.0001, abs(uSwirlAmount));
-  float swirlGlow = 0.5 + 0.5 * sin(swirlPhase);
-  vWeight = aParams.z * mix(1.0, 0.70 + swirlGlow * 0.60, swirlPresence);
+  vWeight = aParams.z * mix(1.0, 0.58 + swirlPulse * 1.02, swirlPresence);
 }
 `,
   fragmentShader: `
