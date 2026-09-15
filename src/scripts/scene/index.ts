@@ -123,7 +123,7 @@ const initializeScene = async () => {
     twinkleStrength: 1.0,
     progressStrength: 1.0,
   });
-  const terrainMaterial = createTerrainMaterial(0.96, 1.72, 1.22);
+  const terrainMaterial = createTerrainMaterial(0.68, 1.72, 0.84);
   const flowerBloomMaterial = createDensityBloomMaterial(0.060, 1.05, 2.55, 0.78);
   const galaxyBloomMaterial = createDensityBloomMaterial(0.055, 1.0, 2.40, 0.25);
 
