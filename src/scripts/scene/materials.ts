@@ -8,9 +8,6 @@ export type ParticleMaterialOptions = {
   maxPixelSize?: number;
   twinkleStrength?: number;
   progressStrength?: number;
-  swirlCenter?: THREE.Vector2;
-  swirlSpeed?: number;
-  swirlAmount?: number;
   additive?: boolean;
 };
 
@@ -18,9 +15,6 @@ const particleVertex = `
 uniform float uTime;
 uniform float uProgress;
 uniform float uProgressStrength;
-uniform vec2 uSwirlCenter;
-uniform float uSwirlSpeed;
-uniform float uSwirlAmount;
 uniform vec2 uViewport;
 uniform float uSizeMultiplier;
 uniform float uMinPixelSize;
@@ -40,16 +34,6 @@ void main() {
   center.y -= uProgress * uProgressStrength * (0.44 + seed * 0.025);
   center.z += uProgress * uProgressStrength * (0.82 + seed * 0.04);
 
-  vec2 swirlOffset = center.xy - uSwirlCenter;
-  float swirlRadius = length(swirlOffset);
-  float swirlPhase = atan(swirlOffset.y, swirlOffset.x) * 2.0 - swirlRadius * 0.72 + uTime * uSwirlSpeed;
-  float swirlFalloff = exp(-swirlRadius * 0.32);
-  float innerSafeRadius = 1.75;
-  float swirlRamp = smoothstep(innerSafeRadius, innerSafeRadius + 2.05, swirlRadius);
-  float swirlAngle = sin(swirlPhase) * uSwirlAmount * swirlFalloff * swirlRamp;
-  float swirlCos = cos(swirlAngle);
-  float swirlSin = sin(swirlAngle);
-  center.xy = uSwirlCenter + mat2(swirlCos, swirlSin, -swirlSin, swirlCos) * swirlOffset;
 
   float eligible = step(0.18, fract(seed * 11.97));
   float speed = 1.15 + fract(seed * 29.17) * 2.10;
@@ -57,19 +41,12 @@ void main() {
   float secondary = 0.5 + 0.5 * sin(seed * 91.13 + uTime * (0.55 + fract(seed * 7.11) * 0.65));
   float sparkle = pow(wave, 7.0) * (0.55 + secondary * 0.45);
   float twinkleBrightness = 0.72 + wave * 0.48 + sparkle * 0.80;
-  float swirlPresence = step(0.0001, abs(uSwirlAmount));
-  float swirlWave = 0.5 + 0.5 * sin(swirlPhase);
-  float swirlShoulder = smoothstep(0.38, 0.86, swirlWave);
-  float swirlCrest = smoothstep(0.78, 0.985, swirlWave);
-  float swirlMix = swirlPresence * swirlRamp;
-  float swirlLift = swirlMix * (swirlShoulder * 0.18 + swirlCrest * 0.82);
-  float swirlShimmer = 1.0 + swirlLift * 0.72;
   vFlash = eligible * sparkle * uTwinkleStrength;
-  vTwinkle = mix(1.0, mix(1.0, twinkleBrightness, eligible), uTwinkleStrength) * swirlShimmer;
+  vTwinkle = mix(1.0, mix(1.0, twinkleBrightness, eligible), uTwinkleStrength);
 
   vec4 mv = modelViewMatrix * vec4(center, 1.0);
   float distanceScale = clamp(11.5 / max(1.0, -mv.z), 0.48, 1.85);
-  float sizeLift = (1.0 + vFlash * 0.95) * (1.0 + swirlLift * 0.34);
+  float sizeLift = 1.0 + vFlash * 0.95;
   float px = clamp(particleSize * uSizeMultiplier * distanceScale * sizeLift, uMinPixelSize, uMaxPixelSize);
   vec4 clip = projectionMatrix * mv;
   clip.xy += position.xy * px * 2.0 / max(uViewport, vec2(1.0)) * clip.w;
@@ -108,9 +85,6 @@ export const createParticleMaterial = (
     uTime: { value: 0 },
     uProgress: { value: 0 },
     uProgressStrength: { value: options.progressStrength ?? 0 },
-    uSwirlCenter: { value: options.swirlCenter?.clone() ?? new THREE.Vector2() },
-    uSwirlSpeed: { value: options.swirlSpeed ?? 0 },
-    uSwirlAmount: { value: options.swirlAmount ?? 0 },
     uViewport: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) },
     uOpacity: { value: options.opacity ?? 1 },
     uIntensity: { value: options.intensity ?? 1 },
@@ -190,9 +164,6 @@ export const createDensityBloomMaterial = (
   intensity: number,
   sizeMultiplier: number,
   warmth: number,
-  swirlCenter = new THREE.Vector2(),
-  swirlSpeed = 0,
-  swirlAmount = 0,
 ) => new THREE.ShaderMaterial({
   uniforms: {
     uViewport: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) },
@@ -200,18 +171,10 @@ export const createDensityBloomMaterial = (
     uIntensity: { value: intensity },
     uSizeMultiplier: { value: sizeMultiplier },
     uWarmth: { value: warmth },
-    uTime: { value: 0 },
-    uSwirlCenter: { value: swirlCenter.clone() },
-    uSwirlSpeed: { value: swirlSpeed },
-    uSwirlAmount: { value: swirlAmount },
   },
   vertexShader: `
 uniform vec2 uViewport;
 uniform float uSizeMultiplier;
-uniform float uTime;
-uniform vec2 uSwirlCenter;
-uniform float uSwirlSpeed;
-uniform float uSwirlAmount;
 attribute vec3 aOffset;
 attribute vec3 aColor;
 attribute vec3 aParams;
@@ -220,32 +183,15 @@ varying vec3 vColor;
 varying float vWeight;
 void main() {
   vec3 center = aOffset;
-  vec2 swirlOffset = center.xy - uSwirlCenter;
-  float swirlRadius = length(swirlOffset);
-  float swirlPhase = atan(swirlOffset.y, swirlOffset.x) * 2.0 - swirlRadius * 0.72 + uTime * uSwirlSpeed;
-  float swirlFalloff = exp(-swirlRadius * 0.32);
-  float innerSafeRadius = 1.75;
-  float swirlRamp = smoothstep(innerSafeRadius, innerSafeRadius + 2.05, swirlRadius);
-  float swirlAngle = sin(swirlPhase) * uSwirlAmount * swirlFalloff * swirlRamp;
-  float swirlCos = cos(swirlAngle);
-  float swirlSin = sin(swirlAngle);
-  center.xy = uSwirlCenter + mat2(swirlCos, swirlSin, -swirlSin, swirlCos) * swirlOffset;
-  float swirlPresence = step(0.0001, abs(uSwirlAmount));
-  float swirlWave = 0.5 + 0.5 * sin(swirlPhase);
-  float swirlShoulder = smoothstep(0.38, 0.86, swirlWave);
-  float swirlCrest = smoothstep(0.78, 0.985, swirlWave);
-  float swirlMix = swirlPresence * swirlRamp;
-  float swirlLift = swirlMix * (swirlShoulder * 0.18 + swirlCrest * 0.82);
   vec4 mv = modelViewMatrix * vec4(center, 1.0);
   float distanceScale = clamp(11.0 / max(1.0, -mv.z), 0.48, 1.85);
-  float pulseSize = 1.0 + swirlLift * 0.42;
-  float px = clamp(aParams.x * uSizeMultiplier * distanceScale * pulseSize, 1.2, 24.0);
+  float px = clamp(aParams.x * uSizeMultiplier * distanceScale, 1.2, 24.0);
   vec4 clip = projectionMatrix * mv;
   clip.xy += position.xy * px * 2.0 / max(uViewport, vec2(1.0)) * clip.w;
   gl_Position = clip;
   vUv = uv;
   vColor = aColor;
-  vWeight = aParams.z * (1.0 + swirlLift * 1.15);
+  vWeight = aParams.z;
 }
 `,
   fragmentShader: `
@@ -259,7 +205,7 @@ void main() {
   vec2 p = vUv - 0.5;
   float r2 = dot(p, p);
   float halo = exp(-5.4 * r2) * (1.0 - smoothstep(0.44, 0.515, length(p)));
-  float alpha = halo * uOpacity * clamp(vWeight, 0.55, 2.2);
+  float alpha = halo * uOpacity * clamp(vWeight, 0.55, 1.5);
   if (alpha < 0.0015) discard;
   vec3 warm = vec3(1.0, 0.76, 0.54);
   vec3 color = mix(vColor, warm, uWarmth);
