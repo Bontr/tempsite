@@ -8,6 +8,8 @@ export type ParticleMaterialOptions = {
   maxPixelSize?: number;
   twinkleStrength?: number;
   progressStrength?: number;
+  swirlCenter?: THREE.Vector2;
+  swirlSpeed?: number;
   additive?: boolean;
 };
 
@@ -15,6 +17,8 @@ const particleVertex = `
 uniform float uTime;
 uniform float uProgress;
 uniform float uProgressStrength;
+uniform vec2 uSwirlCenter;
+uniform float uSwirlSpeed;
 uniform vec2 uViewport;
 uniform float uSizeMultiplier;
 uniform float uMinPixelSize;
@@ -33,6 +37,14 @@ void main() {
   vec3 center = aOffset;
   center.y -= uProgress * uProgressStrength * (0.44 + seed * 0.025);
   center.z += uProgress * uProgressStrength * (0.82 + seed * 0.04);
+
+  vec2 swirlOffset = center.xy - uSwirlCenter;
+  float swirlRadius = length(swirlOffset);
+  float swirlRate = 0.35 + 1.15 / (1.0 + swirlRadius * 0.32);
+  float swirlAngle = uTime * uSwirlSpeed * swirlRate;
+  float swirlCos = cos(swirlAngle);
+  float swirlSin = sin(swirlAngle);
+  center.xy = uSwirlCenter + mat2(swirlCos, swirlSin, -swirlSin, swirlCos) * swirlOffset;
 
   float eligible = step(0.18, fract(seed * 11.97));
   float speed = 1.15 + fract(seed * 29.17) * 2.10;
@@ -84,6 +96,8 @@ export const createParticleMaterial = (
     uTime: { value: 0 },
     uProgress: { value: 0 },
     uProgressStrength: { value: options.progressStrength ?? 0 },
+    uSwirlCenter: { value: options.swirlCenter?.clone() ?? new THREE.Vector2() },
+    uSwirlSpeed: { value: options.swirlSpeed ?? 0 },
     uViewport: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) },
     uOpacity: { value: options.opacity ?? 1 },
     uIntensity: { value: options.intensity ?? 1 },
@@ -163,6 +177,8 @@ export const createDensityBloomMaterial = (
   intensity: number,
   sizeMultiplier: number,
   warmth: number,
+  swirlCenter = new THREE.Vector2(),
+  swirlSpeed = 0,
 ) => new THREE.ShaderMaterial({
   uniforms: {
     uViewport: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) },
@@ -170,10 +186,16 @@ export const createDensityBloomMaterial = (
     uIntensity: { value: intensity },
     uSizeMultiplier: { value: sizeMultiplier },
     uWarmth: { value: warmth },
+    uTime: { value: 0 },
+    uSwirlCenter: { value: swirlCenter.clone() },
+    uSwirlSpeed: { value: swirlSpeed },
   },
   vertexShader: `
 uniform vec2 uViewport;
 uniform float uSizeMultiplier;
+uniform float uTime;
+uniform vec2 uSwirlCenter;
+uniform float uSwirlSpeed;
 attribute vec3 aOffset;
 attribute vec3 aColor;
 attribute vec3 aParams;
@@ -181,7 +203,15 @@ varying vec2 vUv;
 varying vec3 vColor;
 varying float vWeight;
 void main() {
-  vec4 mv = modelViewMatrix * vec4(aOffset, 1.0);
+  vec3 center = aOffset;
+  vec2 swirlOffset = center.xy - uSwirlCenter;
+  float swirlRadius = length(swirlOffset);
+  float swirlRate = 0.35 + 1.15 / (1.0 + swirlRadius * 0.32);
+  float swirlAngle = uTime * uSwirlSpeed * swirlRate;
+  float swirlCos = cos(swirlAngle);
+  float swirlSin = sin(swirlAngle);
+  center.xy = uSwirlCenter + mat2(swirlCos, swirlSin, -swirlSin, swirlCos) * swirlOffset;
+  vec4 mv = modelViewMatrix * vec4(center, 1.0);
   float distanceScale = clamp(11.0 / max(1.0, -mv.z), 0.48, 1.85);
   float px = clamp(aParams.x * uSizeMultiplier * distanceScale, 1.2, 24.0);
   vec4 clip = projectionMatrix * mv;

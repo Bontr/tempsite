@@ -104,6 +104,7 @@ const initializeScene = async () => {
   const flowerBloomGeometry = createFlowerBloomGeometry(morph, flowerBloomCount);
   const galaxyBloomGeometry = createGalaxyBloomGeometry(morph, galaxyBloomCount);
   const renderedStarCount = Math.round(quality.starCount * 1.9);
+  const galaxySwirlCenter = new THREE.Vector2(GALAXY_CENTER.x, GALAXY_CENTER.y);
   const flowerMaterial = createParticleMaterial({
     opacity: 0.98,
     intensity: 1.02,
@@ -117,6 +118,8 @@ const initializeScene = async () => {
     sizeMultiplier: 1.66,
     minPixelSize: 1.02,
     maxPixelSize: 7.8,
+    swirlCenter: galaxySwirlCenter,
+    swirlSpeed: 0.10,
   });
   const starMaterial = createParticleMaterial({
     opacity: 0.54,
@@ -131,7 +134,7 @@ const initializeScene = async () => {
   const terrainMaterial = createTerrainMaterial(0.68, 1.52, 1.07);
   const terrainBloomMaterial = createDensityBloomMaterial(0.040, 0.96, 2.55, 0.72);
   const flowerBloomMaterial = createDensityBloomMaterial(0.060, 1.05, 2.55, 0.78);
-  const galaxyBloomMaterial = createDensityBloomMaterial(0.055, 1.0, 2.40, 0.78);
+  const galaxyBloomMaterial = createDensityBloomMaterial(0.055, 1.0, 2.40, 0.78, galaxySwirlCenter, 0.10);
 
   const flowerBloomPoints = new THREE.Mesh(flowerBloomGeometry, flowerBloomMaterial);
   flowerBloomPoints.frustumCulled = false;
@@ -321,6 +324,11 @@ const initializeScene = async () => {
   const galaxyWorldCenter = GALAXY_CENTER.clone().add(new THREE.Vector3(0, -worldGap, 0));
   const galaxyOrbitA = createOrbit(galaxyWorldCenter, 8.4, 2.5, 53, -7, 0.14);
   const galaxyOrbitB = createOrbit(galaxyWorldCenter, 6.35, 1.9, -48, 10, 0.07);
+  const galaxyOrbitSwirlCenter = new THREE.Vector2(galaxyWorldCenter.x, galaxyWorldCenter.y);
+  [galaxyOrbitA, galaxyOrbitB].forEach(({ material }) => {
+    material.uniforms.uSwirlCenter.value.copy(galaxyOrbitSwirlCenter);
+    material.uniforms.uSwirlSpeed.value = 0.055;
+  });
 
   const travelRandom = makeRng(7411);
   const travelCount = mobile ? 260 : 520;
@@ -482,6 +490,7 @@ const initializeScene = async () => {
 
     galaxyMaterial.uniforms.uTime.value = time;
     galaxyMaterial.uniforms.uOpacity.value = 0.98;
+    galaxyBloomMaterial.uniforms.uTime.value = time;
     galaxyBloomMaterial.uniforms.uOpacity.value = 0.055;
 
     foreground.visible = landscapeExit > 0.002;
@@ -501,6 +510,8 @@ const initializeScene = async () => {
     flowerOrbitB.material.uniforms.uOpacity.value = 0.06 * flowerExit;
     flowerOrbitA.mesh.visible = flowerExit > 0.002;
     flowerOrbitB.mesh.visible = flowerExit > 0.002;
+    galaxyOrbitA.material.uniforms.uTime.value = time;
+    galaxyOrbitB.material.uniforms.uTime.value = time;
     galaxyOrbitA.material.uniforms.uOpacity.value = 0.14;
     galaxyOrbitB.material.uniforms.uOpacity.value = 0.07;
     galaxyOrbitA.mesh.visible = true;
