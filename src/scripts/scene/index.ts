@@ -95,7 +95,7 @@ const initializeScene = async () => {
   const flowerGeometry = createFlowerGeometry(morph, quality.morphCount);
   const galaxyGeometry = createGalaxyGeometry(morph, quality.morphCount);
   const terrainGeometry = createTerrainGeometry(terrain, quality.terrainCount);
-  const terrainBloomCount = mobile ? 500 : 1200;
+  const terrainBloomCount = mobile ? 320 : 760;
   const terrainBloomGeometry = createTerrainBloomGeometry(terrain, terrainBloomCount);
   const renderedTerrainBloomCount = terrainBloomGeometry.getAttribute('aOffset').count / 4;
   const starGeometry = createStarGeometry(quality.starCount, worldGap);

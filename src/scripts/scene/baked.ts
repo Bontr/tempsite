@@ -153,7 +153,9 @@ export const createTerrainGeometry = (data: Float32Array, countLimit: number) =>
     const ridge = THREE.MathUtils.clamp(ridgeBand * (0.12 + edgeBoost * 0.88), 0, 1);
     const sourceLine = THREE.MathUtils.smoothstep(sourceLum, 0.025, 0.18);
     const personLift = terrainPersonDensity(x, z);
-    const visibility = THREE.MathUtils.clamp(0.002 + sourceLine * 0.52 + ridge * 0.66 + personLift * 0.10, 0, 1);
+    const visibilityBase = THREE.MathUtils.clamp(0.002 + sourceLine * 0.52 + ridge * 0.66 + personLift * 0.04, 0, 1);
+    const localThin = 1.0 - personLift * 0.20;
+    const visibility = THREE.MathUtils.clamp(visibilityBase * localThin, 0, 1);
     const outline = Math.max(sourceLine, ridge);
     const silverR = 0.62 + outline * 0.24;
     const silverG = 0.575 + outline * 0.22;
@@ -163,13 +165,13 @@ export const createTerrainGeometry = (data: Float32Array, countLimit: number) =>
     const warmG = silverG + warm * 0.08;
     const warmB = Math.max(0, silverB - warm * 0.06);
     const neutral = THREE.MathUtils.clamp(warmR * 0.2126 + warmG * 0.7152 + warmB * 0.0722, 0, 1);
-    const localWarm = personLift * (0.18 + outline * 0.16);
+    const localWarm = personLift * (0.24 + outline * 0.18);
     positions[t] = stretchedX;
     positions[t + 1] = data[o + 1];
     positions[t + 2] = z;
     colors[t] = THREE.MathUtils.lerp(neutral, 1.0, localWarm);
-    colors[t + 1] = THREE.MathUtils.lerp(neutral, 0.78, localWarm);
-    colors[t + 2] = THREE.MathUtils.lerp(neutral, 0.54, localWarm);
+    colors[t + 1] = THREE.MathUtils.lerp(neutral, 0.74, localWarm);
+    colors[t + 2] = THREE.MathUtils.lerp(neutral, 0.48, localWarm);
     params[t] = data[o + 6] * (0.84 + outline * 0.06);
     params[t + 1] = hash01(sourceIndex, 7741);
     params[t + 2] = visibility;
@@ -187,7 +189,7 @@ export const createTerrainBloomGeometry = (data: Float32Array, countLimit: numbe
     const sourceLum = data[o + 3] * 0.2126 + data[o + 4] * 0.7152 + data[o + 5] * 0.0722;
     const sourceLine = THREE.MathUtils.smoothstep(sourceLum, 0.025, 0.18);
     const weight = terrainPersonDensity(x, z) * (0.30 + sourceLine * 0.70);
-    if (weight > 0.12 && hash01(i, 8803) < 0.12 + weight * 0.32) {
+    if (weight > 0.16 && hash01(i, 8803) < 0.08 + weight * 0.20) {
       candidates.push({ index: i, weight });
     }
   }
