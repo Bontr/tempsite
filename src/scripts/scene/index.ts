@@ -119,8 +119,8 @@ const initializeScene = async () => {
     minPixelSize: 1.02,
     maxPixelSize: 7.8,
     swirlCenter: galaxySwirlCenter,
-    swirlSpeed: -0.020,
-    swirlAmount: 0.075,
+    swirlSpeed: -0.085,
+    swirlAmount: 0.018,
   });
   const starMaterial = createParticleMaterial({
     opacity: 0.54,
@@ -135,7 +135,7 @@ const initializeScene = async () => {
   const terrainMaterial = createTerrainMaterial(0.68, 1.52, 1.07);
   const terrainBloomMaterial = createDensityBloomMaterial(0.040, 0.96, 2.55, 0.72);
   const flowerBloomMaterial = createDensityBloomMaterial(0.060, 1.05, 2.55, 0.78);
-  const galaxyBloomMaterial = createDensityBloomMaterial(0.055, 1.0, 2.40, 0.78, galaxySwirlCenter, -0.020, 0.075);
+  const galaxyBloomMaterial = createDensityBloomMaterial(0.055, 1.0, 2.40, 0.78, galaxySwirlCenter, -0.085, 0.018);
 
   const flowerBloomPoints = new THREE.Mesh(flowerBloomGeometry, flowerBloomMaterial);
   flowerBloomPoints.frustumCulled = false;
@@ -328,7 +328,7 @@ const initializeScene = async () => {
   const galaxyOrbitSwirlCenter = new THREE.Vector2(galaxyWorldCenter.x, galaxyWorldCenter.y);
   [galaxyOrbitA, galaxyOrbitB].forEach(({ material }) => {
     material.uniforms.uSwirlCenter.value.copy(galaxyOrbitSwirlCenter);
-    material.uniforms.uSwirlSpeed.value = -0.010;
+    material.uniforms.uSwirlSpeed.value = 0;
   });
 
   const travelRandom = makeRng(7411);

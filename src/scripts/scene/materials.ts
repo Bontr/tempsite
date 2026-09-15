@@ -42,10 +42,9 @@ void main() {
 
   vec2 swirlOffset = center.xy - uSwirlCenter;
   float swirlRadius = length(swirlOffset);
-  float swirlTime = mod(uTime * uSwirlSpeed, 6.28318530718);
-  float swirlPulse = sin(mod(uTime * abs(uSwirlSpeed) * 2.4, 6.28318530718));
-  float swirlFalloff = 1.0 / (1.0 + swirlRadius * 0.14);
-  float swirlAngle = swirlTime + swirlPulse * uSwirlAmount * swirlFalloff;
+  float swirlPhase = atan(swirlOffset.y, swirlOffset.x) * 2.0 - swirlRadius * 0.72 + uTime * uSwirlSpeed;
+  float swirlFalloff = exp(-swirlRadius * 0.32);
+  float swirlAngle = sin(swirlPhase) * uSwirlAmount * swirlFalloff;
   float swirlCos = cos(swirlAngle);
   float swirlSin = sin(swirlAngle);
   center.xy = uSwirlCenter + mat2(swirlCos, swirlSin, -swirlSin, swirlCos) * swirlOffset;
@@ -56,8 +55,11 @@ void main() {
   float secondary = 0.5 + 0.5 * sin(seed * 91.13 + uTime * (0.55 + fract(seed * 7.11) * 0.65));
   float sparkle = pow(wave, 7.0) * (0.55 + secondary * 0.45);
   float twinkleBrightness = 0.72 + wave * 0.48 + sparkle * 0.80;
+  float swirlPresence = step(0.0001, abs(uSwirlAmount));
+  float swirlGlow = 0.5 + 0.5 * sin(swirlPhase);
+  float swirlShimmer = mix(1.0, 0.92 + swirlGlow * 0.16, swirlPresence);
   vFlash = eligible * sparkle * uTwinkleStrength;
-  vTwinkle = mix(1.0, mix(1.0, twinkleBrightness, eligible), uTwinkleStrength);
+  vTwinkle = mix(1.0, mix(1.0, twinkleBrightness, eligible), uTwinkleStrength) * swirlShimmer;
 
   vec4 mv = modelViewMatrix * vec4(center, 1.0);
   float distanceScale = clamp(11.5 / max(1.0, -mv.z), 0.48, 1.85);
@@ -214,10 +216,9 @@ void main() {
   vec3 center = aOffset;
   vec2 swirlOffset = center.xy - uSwirlCenter;
   float swirlRadius = length(swirlOffset);
-  float swirlTime = mod(uTime * uSwirlSpeed, 6.28318530718);
-  float swirlPulse = sin(mod(uTime * abs(uSwirlSpeed) * 2.4, 6.28318530718));
-  float swirlFalloff = 1.0 / (1.0 + swirlRadius * 0.14);
-  float swirlAngle = swirlTime + swirlPulse * uSwirlAmount * swirlFalloff;
+  float swirlPhase = atan(swirlOffset.y, swirlOffset.x) * 2.0 - swirlRadius * 0.72 + uTime * uSwirlSpeed;
+  float swirlFalloff = exp(-swirlRadius * 0.32);
+  float swirlAngle = sin(swirlPhase) * uSwirlAmount * swirlFalloff;
   float swirlCos = cos(swirlAngle);
   float swirlSin = sin(swirlAngle);
   center.xy = uSwirlCenter + mat2(swirlCos, swirlSin, -swirlSin, swirlCos) * swirlOffset;
@@ -229,7 +230,9 @@ void main() {
   gl_Position = clip;
   vUv = uv;
   vColor = aColor;
-  vWeight = aParams.z;
+  float swirlPresence = step(0.0001, abs(uSwirlAmount));
+  float swirlGlow = 0.5 + 0.5 * sin(swirlPhase);
+  vWeight = aParams.z * mix(1.0, 0.90 + swirlGlow * 0.20, swirlPresence);
 }
 `,
   fragmentShader: `
