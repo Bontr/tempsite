@@ -112,7 +112,7 @@ varying float vVisibility;
 void main() {
   vec4 mv = modelViewMatrix * vec4(aOffset, 1.0);
   float distanceScale = clamp(9.8 / max(1.0, -mv.z), 0.46, 1.75);
-  float px = clamp(aParams.x * uSizeMultiplier * distanceScale, 0.90, 8.5);
+  float px = clamp(aParams.x * uSizeMultiplier * distanceScale, 0.58, 5.2);
   vec4 clip = projectionMatrix * mv;
   clip.xy += position.xy * px * 2.0 / max(uViewport, vec2(1.0)) * clip.w;
   gl_Position = clip;
