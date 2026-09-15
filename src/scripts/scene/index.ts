@@ -279,7 +279,7 @@ const initializeScene = async () => {
       const seed = ((i * 16807 + 97) % 2147483647) / 2147483647;
       const o = i * 3;
       offsets.set([center.x + xSpun, center.y + ySpun, center.z + zTilted], o);
-      colors.set([1.0, 0.48 + seed * 0.14, 0.20 + seed * 0.08], o);
+      colors.set([0.98, 0.60 + seed * 0.12, 0.34 + seed * 0.08], o);
       params.set([particleMin + seed * particleRange, seed, 1], o);
     }
     const geometry = new THREE.InstancedBufferGeometry();

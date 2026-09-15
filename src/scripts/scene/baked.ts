@@ -102,9 +102,25 @@ const createMorphSideGeometry = (
     positions[t] = data[o + positionOffset] + (hash01(sourceIndex, seedSalt + 101) - 0.5) * jitter;
     positions[t + 1] = data[o + positionOffset + 1] + (hash01(sourceIndex, seedSalt + 211) - 0.5) * jitter;
     positions[t + 2] = data[o + positionOffset + 2] + (hash01(sourceIndex, seedSalt + 307) - 0.5) * jitter;
-    colors[t] = data[o + colorOffset];
-    colors[t + 1] = data[o + colorOffset + 1];
-    colors[t + 2] = data[o + colorOffset + 2];
+    const rawR = data[o + colorOffset];
+    const rawG = data[o + colorOffset + 1];
+    const rawB = data[o + colorOffset + 2];
+    if (flowerDither) {
+      const lum = rawR * 0.2126 + rawG * 0.7152 + rawB * 0.0722;
+      const warmSignal = THREE.MathUtils.clamp((rawR - rawB) * 1.05 + (rawR - rawG) * 0.70, 0, 1);
+      const hot = THREE.MathUtils.smoothstep(lum, 0.22, 0.92);
+      const soften = warmSignal * (0.16 + hot * 0.22);
+      const ivoryR = lum * 1.08;
+      const ivoryG = lum * 1.02;
+      const ivoryB = lum * 0.94;
+      colors[t] = THREE.MathUtils.lerp(rawR, ivoryR, soften);
+      colors[t + 1] = THREE.MathUtils.lerp(rawG, ivoryG, soften);
+      colors[t + 2] = THREE.MathUtils.lerp(rawB, ivoryB, soften);
+    } else {
+      colors[t] = rawR;
+      colors[t + 1] = rawG;
+      colors[t + 2] = rawB;
+    }
     params[t] = data[o + sizeOffset] * (flowerDither
       ? 0.84 + hash01(sourceIndex, seedSalt + 509) * 0.32
       : 1);
@@ -144,13 +160,13 @@ export const createTerrainGeometry = (data: Float32Array, countLimit: number) =>
     const silverR = 0.54 + outline * 0.22;
     const silverG = 0.545 + outline * 0.205;
     const silverB = 0.55 + outline * 0.18;
-    const warm = personLift * ridge * 0.10;
+    const warm = personLift * (0.20 + outline * 0.48);
     positions[t] = stretchedX;
     positions[t + 1] = data[o + 1];
     positions[t + 2] = z;
-    colors[t] = silverR + warm * 0.12;
+    colors[t] = silverR + warm * 0.14;
     colors[t + 1] = silverG + warm * 0.055;
-    colors[t + 2] = silverB * (1 - warm * 0.12);
+    colors[t + 2] = Math.max(0, silverB - warm * 0.10);
     params[t] = data[o + 6] * (0.84 + outline * 0.06);
     params[t + 1] = hash01(sourceIndex, 7741);
     params[t + 2] = visibility;

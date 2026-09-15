@@ -205,7 +205,7 @@ void main() {
   float halo = exp(-5.4 * r2) * (1.0 - smoothstep(0.44, 0.515, length(p)));
   float alpha = halo * uOpacity * clamp(vWeight, 0.55, 1.5);
   if (alpha < 0.0015) discard;
-  vec3 warm = vec3(1.0, 0.62, 0.27);
+  vec3 warm = vec3(1.0, 0.76, 0.54);
   vec3 color = mix(vColor, warm, uWarmth);
   gl_FragColor = vec4(color * uIntensity, alpha);
 }
