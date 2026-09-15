@@ -115,15 +115,15 @@ const initializeScene = async () => {
     maxPixelSize: 7.8,
   });
   const starMaterial = createParticleMaterial({
-    opacity: 0.42,
-    intensity: 1.00,
+    opacity: 0.50,
+    intensity: 1.10,
     sizeMultiplier: 2.40,
     minPixelSize: 0.95,
     maxPixelSize: 7.0,
     twinkleStrength: 0.58,
     progressStrength: 1.0,
   });
-  const terrainMaterial = createTerrainMaterial(0.61, 1.52, 0.96);
+  const terrainMaterial = createTerrainMaterial(0.65, 1.52, 1.02);
   const flowerBloomMaterial = createDensityBloomMaterial(0.060, 1.05, 2.55, 0.78);
   const galaxyBloomMaterial = createDensityBloomMaterial(0.055, 1.0, 2.40, 0.78);
 
@@ -475,7 +475,7 @@ const initializeScene = async () => {
     galaxyBloomMaterial.uniforms.uOpacity.value = 0.055;
 
     foreground.visible = landscapeExit > 0.002;
-    terrainMaterial.uniforms.uOpacity.value = 0.60 * landscapeExit;
+    terrainMaterial.uniforms.uOpacity.value = 0.64 * landscapeExit;
     person.visible = landscapeExit > 0.002;
     personMaterial.opacity = landscapeExit;
     personKey.intensity = 6.8 * landscapeExit;
@@ -484,7 +484,7 @@ const initializeScene = async () => {
 
     starMaterial.uniforms.uTime.value = time;
     starMaterial.uniforms.uProgress.value = 0.018 + travelPulse * 0.012;
-    starMaterial.uniforms.uOpacity.value = 0.40;
+    starMaterial.uniforms.uOpacity.value = 0.46;
 
     flowerOrbitA.material.uniforms.uOpacity.value = 0.15 * flowerExit;
     flowerOrbitB.material.uniforms.uOpacity.value = 0.06 * flowerExit;

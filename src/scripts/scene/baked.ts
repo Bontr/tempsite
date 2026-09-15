@@ -151,16 +151,16 @@ export const createTerrainGeometry = (data: Float32Array, countLimit: number) =>
     const personLift = Math.exp(-(((x + 1.65) / 0.72) ** 2 + ((z - 1.7) / 0.52) ** 2));
     const visibility = THREE.MathUtils.clamp(0.002 + sourceLine * 0.52 + ridge * 0.66 + personLift * 0.10, 0, 1);
     const outline = Math.max(sourceLine, ridge);
-    const silverR = 0.54 + outline * 0.22;
-    const silverG = 0.545 + outline * 0.205;
-    const silverB = 0.55 + outline * 0.18;
-    const warm = personLift * (0.20 + outline * 0.48);
+    const silverR = 0.56 + outline * 0.23;
+    const silverG = 0.56 + outline * 0.215;
+    const silverB = 0.565 + outline * 0.19;
+    const warm = personLift * (0.28 + outline * 0.58);
     positions[t] = stretchedX;
     positions[t + 1] = data[o + 1];
     positions[t + 2] = z;
-    colors[t] = silverR + warm * 0.14;
-    colors[t + 1] = silverG + warm * 0.055;
-    colors[t + 2] = Math.max(0, silverB - warm * 0.10);
+    colors[t] = silverR + warm * 0.19;
+    colors[t + 1] = silverG + warm * 0.09;
+    colors[t + 2] = Math.max(0, silverB - warm * 0.11);
     params[t] = data[o + 6] * (0.84 + outline * 0.06);
     params[t + 1] = hash01(sourceIndex, 7741);
     params[t + 2] = visibility;
@@ -176,8 +176,7 @@ export const createStarGeometry = (baseCount: number, worldGap: number) => {
   const positions = new Float32Array(count * 3);
   const colors = new Float32Array(count * 3);
   const params = new Float32Array(count * 3);
-  const white = new THREE.Color(0.72, 0.78, 0.82);
-  const amber = new THREE.Color(1.75, 0.69, 0.26);
+  const white = new THREE.Color(1.0, 1.0, 1.0);
   const temp = new THREE.Color();
   for (let i = 0; i < count; i += 1) {
     const t = i * 3;
@@ -185,7 +184,8 @@ export const createStarGeometry = (baseCount: number, worldGap: number) => {
     positions[t + 1] = centerY + (random() * 2 - 1) * halfSpanY;
     positions[t + 2] = -7 - random() * 18;
     const warm = random() < 0.075 ? 0.65 + random() * 0.35 : 0;
-    temp.copy(white).lerp(amber, warm).multiplyScalar(0.62 + random() * 0.48);
+    void warm; // preserve the reference random stream while keeping stars neutral white.
+    temp.copy(white).multiplyScalar(0.80 + random() * 0.36);
     colors[t] = temp.r;
     colors[t + 1] = temp.g;
     colors[t + 2] = temp.b;
