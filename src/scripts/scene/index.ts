@@ -129,7 +129,7 @@ const initializeScene = async () => {
     additive: true,
   });
   const terrainMaterial = createTerrainMaterial(0.68, 1.52, 1.07);
-  const terrainBloomMaterial = createDensityBloomMaterial(0.018, 0.90, 2.30, 0.48);
+  const terrainBloomMaterial = createDensityBloomMaterial(0.040, 0.96, 2.55, 0.72);
   const flowerBloomMaterial = createDensityBloomMaterial(0.060, 1.05, 2.55, 0.78);
   const galaxyBloomMaterial = createDensityBloomMaterial(0.055, 1.0, 2.40, 0.78);
 
@@ -486,7 +486,7 @@ const initializeScene = async () => {
 
     foreground.visible = landscapeExit > 0.002;
     terrainMaterial.uniforms.uOpacity.value = 0.67 * landscapeExit;
-    terrainBloomMaterial.uniforms.uOpacity.value = 0.018 * landscapeExit;
+    terrainBloomMaterial.uniforms.uOpacity.value = 0.040 * landscapeExit;
     person.visible = landscapeExit > 0.002;
     personMaterial.opacity = landscapeExit;
     personKey.intensity = 6.8 * landscapeExit;

@@ -131,7 +131,7 @@ export const createGalaxyGeometry = (data: Float32Array, count: number) =>
   createMorphSideGeometry(data, count, 3, 9, 13, 31415, false);
 
 const terrainPersonDensity = (x: number, z: number) =>
-  Math.exp(-(((x + 1.65) / 0.72) ** 2 + ((z - 1.7) / 0.52) ** 2));
+  Math.exp(-(((x + 1.65) / 0.95) ** 2 + ((z - 1.7) / 0.66) ** 2));
 
 export const createTerrainGeometry = (data: Float32Array, countLimit: number) => {
   const total = Math.floor(data.length / TERRAIN_STRIDE);
@@ -163,13 +163,13 @@ export const createTerrainGeometry = (data: Float32Array, countLimit: number) =>
     const warmG = silverG + warm * 0.08;
     const warmB = Math.max(0, silverB - warm * 0.06);
     const neutral = THREE.MathUtils.clamp(warmR * 0.2126 + warmG * 0.7152 + warmB * 0.0722, 0, 1);
-    const localWarm = personLift * (0.02 + outline * 0.035);
+    const localWarm = personLift * (0.18 + outline * 0.16);
     positions[t] = stretchedX;
     positions[t + 1] = data[o + 1];
     positions[t + 2] = z;
-    colors[t] = THREE.MathUtils.clamp(neutral + localWarm * 0.10, 0, 1);
-    colors[t + 1] = THREE.MathUtils.clamp(neutral + localWarm * 0.035, 0, 1);
-    colors[t + 2] = THREE.MathUtils.clamp(neutral - localWarm * 0.06, 0, 1);
+    colors[t] = THREE.MathUtils.lerp(neutral, 1.0, localWarm);
+    colors[t + 1] = THREE.MathUtils.lerp(neutral, 0.78, localWarm);
+    colors[t + 2] = THREE.MathUtils.lerp(neutral, 0.54, localWarm);
     params[t] = data[o + 6] * (0.84 + outline * 0.06);
     params[t + 1] = hash01(sourceIndex, 7741);
     params[t + 2] = visibility;
