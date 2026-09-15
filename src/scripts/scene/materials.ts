@@ -44,7 +44,9 @@ void main() {
   float swirlRadius = length(swirlOffset);
   float swirlPhase = atan(swirlOffset.y, swirlOffset.x) * 2.0 - swirlRadius * 0.72 + uTime * uSwirlSpeed;
   float swirlFalloff = exp(-swirlRadius * 0.32);
-  float swirlAngle = sin(swirlPhase) * uSwirlAmount * swirlFalloff;
+  float innerSafeRadius = 1.85;
+  float swirlRamp = smoothstep(innerSafeRadius, innerSafeRadius + 2.4, swirlRadius);
+  float swirlAngle = sin(swirlPhase) * uSwirlAmount * swirlFalloff * swirlRamp;
   float swirlCos = cos(swirlAngle);
   float swirlSin = sin(swirlAngle);
   center.xy = uSwirlCenter + mat2(swirlCos, swirlSin, -swirlSin, swirlCos) * swirlOffset;
@@ -58,13 +60,14 @@ void main() {
   float swirlPresence = step(0.0001, abs(uSwirlAmount));
   float swirlWave = 0.5 + 0.5 * sin(swirlPhase);
   float swirlPulse = smoothstep(0.18, 0.92, swirlWave);
-  float swirlShimmer = mix(1.0, 0.58 + swirlPulse * 0.92, swirlPresence);
+  float swirlMix = swirlPresence * swirlRamp;
+  float swirlShimmer = mix(1.0, 0.86 + swirlPulse * 0.34, swirlMix);
   vFlash = eligible * sparkle * uTwinkleStrength;
   vTwinkle = mix(1.0, mix(1.0, twinkleBrightness, eligible), uTwinkleStrength) * swirlShimmer;
 
   vec4 mv = modelViewMatrix * vec4(center, 1.0);
   float distanceScale = clamp(11.5 / max(1.0, -mv.z), 0.48, 1.85);
-  float sizeLift = (1.0 + vFlash * 0.95) * mix(1.0, 0.80 + swirlPulse * 0.72, swirlPresence);
+  float sizeLift = (1.0 + vFlash * 0.95) * mix(1.0, 0.93 + swirlPulse * 0.18, swirlMix);
   float px = clamp(particleSize * uSizeMultiplier * distanceScale * sizeLift, uMinPixelSize, uMaxPixelSize);
   vec4 clip = projectionMatrix * mv;
   clip.xy += position.xy * px * 2.0 / max(uViewport, vec2(1.0)) * clip.w;
@@ -219,23 +222,26 @@ void main() {
   float swirlRadius = length(swirlOffset);
   float swirlPhase = atan(swirlOffset.y, swirlOffset.x) * 2.0 - swirlRadius * 0.72 + uTime * uSwirlSpeed;
   float swirlFalloff = exp(-swirlRadius * 0.32);
-  float swirlAngle = sin(swirlPhase) * uSwirlAmount * swirlFalloff;
+  float innerSafeRadius = 1.85;
+  float swirlRamp = smoothstep(innerSafeRadius, innerSafeRadius + 2.4, swirlRadius);
+  float swirlAngle = sin(swirlPhase) * uSwirlAmount * swirlFalloff * swirlRamp;
   float swirlCos = cos(swirlAngle);
   float swirlSin = sin(swirlAngle);
   center.xy = uSwirlCenter + mat2(swirlCos, swirlSin, -swirlSin, swirlCos) * swirlOffset;
   float swirlPresence = step(0.0001, abs(uSwirlAmount));
   float swirlWave = 0.5 + 0.5 * sin(swirlPhase);
   float swirlPulse = smoothstep(0.18, 0.92, swirlWave);
+  float swirlMix = swirlPresence * swirlRamp;
   vec4 mv = modelViewMatrix * vec4(center, 1.0);
   float distanceScale = clamp(11.0 / max(1.0, -mv.z), 0.48, 1.85);
-  float pulseSize = mix(1.0, 0.82 + swirlPulse * 0.58, swirlPresence);
+  float pulseSize = mix(1.0, 0.94 + swirlPulse * 0.16, swirlMix);
   float px = clamp(aParams.x * uSizeMultiplier * distanceScale * pulseSize, 1.2, 24.0);
   vec4 clip = projectionMatrix * mv;
   clip.xy += position.xy * px * 2.0 / max(uViewport, vec2(1.0)) * clip.w;
   gl_Position = clip;
   vUv = uv;
   vColor = aColor;
-  vWeight = aParams.z * mix(1.0, 0.58 + swirlPulse * 1.02, swirlPresence);
+  vWeight = aParams.z * mix(1.0, 0.90 + swirlPulse * 0.24, swirlMix);
 }
 `,
   fragmentShader: `
