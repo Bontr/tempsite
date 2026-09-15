@@ -115,8 +115,8 @@ const initializeScene = async () => {
     maxPixelSize: 7.8,
   });
   const starMaterial = createParticleMaterial({
-    opacity: 0.36,
-    intensity: 0.90,
+    opacity: 0.42,
+    intensity: 1.00,
     sizeMultiplier: 2.40,
     minPixelSize: 0.95,
     maxPixelSize: 7.0,
@@ -484,7 +484,7 @@ const initializeScene = async () => {
 
     starMaterial.uniforms.uTime.value = time;
     starMaterial.uniforms.uProgress.value = 0.018 + travelPulse * 0.012;
-    starMaterial.uniforms.uOpacity.value = 0.34;
+    starMaterial.uniforms.uOpacity.value = 0.40;
 
     flowerOrbitA.material.uniforms.uOpacity.value = 0.15 * flowerExit;
     flowerOrbitB.material.uniforms.uOpacity.value = 0.06 * flowerExit;
