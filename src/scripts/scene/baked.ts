@@ -169,7 +169,7 @@ export const createTerrainGeometry = (data: Float32Array, countLimit: number) =>
 };
 
 export const createStarGeometry = (baseCount: number, worldGap: number) => {
-  const count = Math.round(baseCount * 2.8);
+  const count = Math.round(baseCount * 1.9);
   const centerY = -worldGap * 0.5;
   const halfSpanY = worldGap * 0.5 + 13;
   const random = makeRng(20260909);

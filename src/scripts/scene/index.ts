@@ -99,7 +99,7 @@ const initializeScene = async () => {
   const galaxyBloomCount = mobile ? 2200 : 5200;
   const flowerBloomGeometry = createFlowerBloomGeometry(morph, flowerBloomCount);
   const galaxyBloomGeometry = createGalaxyBloomGeometry(morph, galaxyBloomCount);
-  const renderedStarCount = Math.round(quality.starCount * 2.8);
+  const renderedStarCount = Math.round(quality.starCount * 1.9);
   const flowerMaterial = createParticleMaterial({
     opacity: 0.98,
     intensity: 1.02,
@@ -117,9 +117,9 @@ const initializeScene = async () => {
   const starMaterial = createParticleMaterial({
     opacity: 0.36,
     intensity: 0.90,
-    sizeMultiplier: 1.52,
-    minPixelSize: 0.62,
-    maxPixelSize: 4.8,
+    sizeMultiplier: 1.95,
+    minPixelSize: 0.82,
+    maxPixelSize: 6.2,
     twinkleStrength: 0.58,
     progressStrength: 1.0,
   });
