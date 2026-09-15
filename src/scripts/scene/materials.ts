@@ -59,15 +59,17 @@ void main() {
   float twinkleBrightness = 0.72 + wave * 0.48 + sparkle * 0.80;
   float swirlPresence = step(0.0001, abs(uSwirlAmount));
   float swirlWave = 0.5 + 0.5 * sin(swirlPhase);
-  float swirlPulse = smoothstep(0.18, 0.92, swirlWave);
+  float swirlShoulder = smoothstep(0.38, 0.86, swirlWave);
+  float swirlCrest = smoothstep(0.78, 0.985, swirlWave);
   float swirlMix = swirlPresence * swirlRamp;
-  float swirlShimmer = mix(1.0, 0.90 + swirlPulse * 0.42, swirlMix);
+  float swirlLift = swirlMix * (swirlShoulder * 0.18 + swirlCrest * 0.82);
+  float swirlShimmer = 1.0 + swirlLift * 0.72;
   vFlash = eligible * sparkle * uTwinkleStrength;
   vTwinkle = mix(1.0, mix(1.0, twinkleBrightness, eligible), uTwinkleStrength) * swirlShimmer;
 
   vec4 mv = modelViewMatrix * vec4(center, 1.0);
   float distanceScale = clamp(11.5 / max(1.0, -mv.z), 0.48, 1.85);
-  float sizeLift = (1.0 + vFlash * 0.95) * mix(1.0, 0.95 + swirlPulse * 0.24, swirlMix);
+  float sizeLift = (1.0 + vFlash * 0.95) * (1.0 + swirlLift * 0.34);
   float px = clamp(particleSize * uSizeMultiplier * distanceScale * sizeLift, uMinPixelSize, uMaxPixelSize);
   vec4 clip = projectionMatrix * mv;
   clip.xy += position.xy * px * 2.0 / max(uViewport, vec2(1.0)) * clip.w;
@@ -230,18 +232,20 @@ void main() {
   center.xy = uSwirlCenter + mat2(swirlCos, swirlSin, -swirlSin, swirlCos) * swirlOffset;
   float swirlPresence = step(0.0001, abs(uSwirlAmount));
   float swirlWave = 0.5 + 0.5 * sin(swirlPhase);
-  float swirlPulse = smoothstep(0.18, 0.92, swirlWave);
+  float swirlShoulder = smoothstep(0.38, 0.86, swirlWave);
+  float swirlCrest = smoothstep(0.78, 0.985, swirlWave);
   float swirlMix = swirlPresence * swirlRamp;
+  float swirlLift = swirlMix * (swirlShoulder * 0.18 + swirlCrest * 0.82);
   vec4 mv = modelViewMatrix * vec4(center, 1.0);
   float distanceScale = clamp(11.0 / max(1.0, -mv.z), 0.48, 1.85);
-  float pulseSize = mix(1.0, 0.96 + swirlPulse * 0.22, swirlMix);
+  float pulseSize = 1.0 + swirlLift * 0.42;
   float px = clamp(aParams.x * uSizeMultiplier * distanceScale * pulseSize, 1.2, 24.0);
   vec4 clip = projectionMatrix * mv;
   clip.xy += position.xy * px * 2.0 / max(uViewport, vec2(1.0)) * clip.w;
   gl_Position = clip;
   vUv = uv;
   vColor = aColor;
-  vWeight = aParams.z * mix(1.0, 0.94 + swirlPulse * 0.32, swirlMix);
+  vWeight = aParams.z * (1.0 + swirlLift * 1.15);
 }
 `,
   fragmentShader: `
@@ -255,7 +259,7 @@ void main() {
   vec2 p = vUv - 0.5;
   float r2 = dot(p, p);
   float halo = exp(-5.4 * r2) * (1.0 - smoothstep(0.44, 0.515, length(p)));
-  float alpha = halo * uOpacity * clamp(vWeight, 0.55, 1.5);
+  float alpha = halo * uOpacity * clamp(vWeight, 0.55, 2.2);
   if (alpha < 0.0015) discard;
   vec3 warm = vec3(1.0, 0.76, 0.54);
   vec3 color = mix(vColor, warm, uWarmth);
