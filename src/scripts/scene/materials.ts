@@ -39,7 +39,7 @@ void main() {
   float wave = 0.5 + 0.5 * sin(seed * 53.71 + uTime * speed);
   float secondary = 0.5 + 0.5 * sin(seed * 91.13 + uTime * (0.55 + fract(seed * 7.11) * 0.65));
   float sparkle = pow(wave, 7.0) * (0.55 + secondary * 0.45);
-  float twinkleBrightness = 0.38 + wave * 1.02 + sparkle * 1.15;
+  float twinkleBrightness = 0.72 + wave * 0.48 + sparkle * 0.80;
   vFlash = eligible * sparkle * uTwinkleStrength;
   vTwinkle = mix(1.0, mix(1.0, twinkleBrightness, eligible), uTwinkleStrength);
 
