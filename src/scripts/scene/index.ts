@@ -117,9 +117,9 @@ const initializeScene = async () => {
   const starMaterial = createParticleMaterial({
     opacity: 0.36,
     intensity: 0.90,
-    sizeMultiplier: 1.95,
-    minPixelSize: 0.82,
-    maxPixelSize: 6.2,
+    sizeMultiplier: 2.40,
+    minPixelSize: 0.95,
+    maxPixelSize: 7.0,
     twinkleStrength: 0.58,
     progressStrength: 1.0,
   });
