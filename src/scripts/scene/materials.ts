@@ -70,7 +70,9 @@ void main() {
   float glow = 1.0 - smoothstep(0.08, 0.50, radius);
   vec3 color = mix(vColor, vec3(1.0), clamp(vFlash * 0.90, 0.0, 0.90));
   float brightness = max(0.08, vTwinkle);
-  float alpha = circle * uOpacity * clamp(0.45 + brightness * 0.55, 0.42, 1.0);
+  float sourceLum = dot(vColor, vec3(0.2126, 0.7152, 0.0722));
+  float sourceVisibility = smoothstep(0.006, 0.040, sourceLum);
+  float alpha = circle * uOpacity * clamp(0.45 + brightness * 0.55, 0.42, 1.0) * sourceVisibility;
   gl_FragColor = vec4(color * uIntensity * brightness * (1.0 + glow * 0.16), alpha);
 }
 `;

@@ -131,17 +131,20 @@ export const createTerrainGeometry = (data: Float32Array, countLimit: number) =>
     const t = i * 3;
     const x = data[o];
     const z = data[o + 2];
-    const ridge = Math.exp(-((z - 1.5) ** 2) / 0.52) * Math.exp(-(x * x) / 85);
+    const ridgeBand = Math.exp(-((z - 1.5) ** 2) / 0.24);
+    const ridge = ridgeBand * (0.92 + 0.08 * Math.exp(-(x * x) / 320));
     const personLift = Math.exp(-(((x + 1.65) / 0.72) ** 2 + ((z - 1.7) / 0.52) ** 2));
     positions[t] = x;
     positions[t + 1] = data[o + 1];
     positions[t + 2] = z;
-    colors[t] = data[o + 3];
-    colors[t + 1] = data[o + 4];
-    colors[t + 2] = data[o + 5];
-    params[t] = data[o + 6];
+    const edgeBoost = THREE.MathUtils.smoothstep(Math.abs(x), 5.5, 13.0);
+    const ridgeMix = ridge * (0.14 + edgeBoost * 0.20);
+    colors[t] = THREE.MathUtils.lerp(data[o + 3], 0.72, ridgeMix);
+    colors[t + 1] = THREE.MathUtils.lerp(data[o + 4], 0.70, ridgeMix);
+    colors[t + 2] = THREE.MathUtils.lerp(data[o + 5], 0.66, ridgeMix);
+    params[t] = data[o + 6] * (1 + ridge * (0.08 + edgeBoost * 0.16));
     params[t + 1] = hash01(sourceIndex, 7741);
-    params[t + 2] = 1 + ridge * 0.08 + personLift * 0.12;
+    params[t + 2] = 1 + ridge * (0.18 + edgeBoost * 0.28) + personLift * 0.12;
   }
   return createQuadGeometry(positions, colors, params);
 };
