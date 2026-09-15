@@ -105,22 +105,16 @@ const createMorphSideGeometry = (
     const rawR = data[o + colorOffset];
     const rawG = data[o + colorOffset + 1];
     const rawB = data[o + colorOffset + 2];
-    if (flowerDither) {
-      const lum = rawR * 0.2126 + rawG * 0.7152 + rawB * 0.0722;
-      const warmSignal = THREE.MathUtils.clamp((rawR - rawB) * 1.05 + (rawR - rawG) * 0.70, 0, 1);
-      const hot = THREE.MathUtils.smoothstep(lum, 0.22, 0.92);
-      const soften = warmSignal * (0.16 + hot * 0.22);
-      const ivoryR = lum * 1.08;
-      const ivoryG = lum * 1.02;
-      const ivoryB = lum * 0.94;
-      colors[t] = THREE.MathUtils.lerp(rawR, ivoryR, soften);
-      colors[t + 1] = THREE.MathUtils.lerp(rawG, ivoryG, soften);
-      colors[t + 2] = THREE.MathUtils.lerp(rawB, ivoryB, soften);
-    } else {
-      colors[t] = rawR;
-      colors[t + 1] = rawG;
-      colors[t + 2] = rawB;
-    }
+    const lum = rawR * 0.2126 + rawG * 0.7152 + rawB * 0.0722;
+    const warmSignal = THREE.MathUtils.clamp((rawR - rawB) * 1.05 + (rawR - rawG) * 0.70, 0, 1);
+    const hot = THREE.MathUtils.smoothstep(lum, 0.22, 0.92);
+    const soften = warmSignal * (0.16 + hot * 0.22);
+    const ivoryR = lum * 1.08;
+    const ivoryG = lum * 1.02;
+    const ivoryB = lum * 0.94;
+    colors[t] = THREE.MathUtils.lerp(rawR, ivoryR, soften);
+    colors[t + 1] = THREE.MathUtils.lerp(rawG, ivoryG, soften);
+    colors[t + 2] = THREE.MathUtils.lerp(rawB, ivoryB, soften);
     params[t] = data[o + sizeOffset] * (flowerDither
       ? 0.84 + hash01(sourceIndex, seedSalt + 509) * 0.32
       : 1);

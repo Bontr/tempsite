@@ -115,17 +115,17 @@ const initializeScene = async () => {
     maxPixelSize: 7.8,
   });
   const starMaterial = createParticleMaterial({
-    opacity: 0.54,
-    intensity: 1.02,
-    sizeMultiplier: 2.70,
-    minPixelSize: 1.32,
-    maxPixelSize: 10.5,
-    twinkleStrength: 1.0,
+    opacity: 0.36,
+    intensity: 0.90,
+    sizeMultiplier: 1.52,
+    minPixelSize: 0.62,
+    maxPixelSize: 4.8,
+    twinkleStrength: 0.58,
     progressStrength: 1.0,
   });
   const terrainMaterial = createTerrainMaterial(0.61, 1.52, 0.96);
   const flowerBloomMaterial = createDensityBloomMaterial(0.060, 1.05, 2.55, 0.78);
-  const galaxyBloomMaterial = createDensityBloomMaterial(0.055, 1.0, 2.40, 0.25);
+  const galaxyBloomMaterial = createDensityBloomMaterial(0.055, 1.0, 2.40, 0.78);
 
   const flowerBloomPoints = new THREE.Mesh(flowerBloomGeometry, flowerBloomMaterial);
   flowerBloomPoints.frustumCulled = false;
@@ -484,7 +484,7 @@ const initializeScene = async () => {
 
     starMaterial.uniforms.uTime.value = time;
     starMaterial.uniforms.uProgress.value = 0.018 + travelPulse * 0.012;
-    starMaterial.uniforms.uOpacity.value = 0.50;
+    starMaterial.uniforms.uOpacity.value = 0.34;
 
     flowerOrbitA.material.uniforms.uOpacity.value = 0.15 * flowerExit;
     flowerOrbitB.material.uniforms.uOpacity.value = 0.06 * flowerExit;
