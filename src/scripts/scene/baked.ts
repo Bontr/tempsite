@@ -140,15 +140,18 @@ export const createTerrainGeometry = (data: Float32Array, countLimit: number) =>
     const sourceLine = THREE.MathUtils.smoothstep(sourceLum, 0.025, 0.18);
     const personLift = Math.exp(-(((x + 1.65) / 0.72) ** 2 + ((z - 1.7) / 0.52) ** 2));
     const visibility = THREE.MathUtils.clamp(0.002 + sourceLine * 0.52 + ridge * 0.66 + personLift * 0.10, 0, 1);
-    const white = 0.92 + Math.max(sourceLine, ridge) * 0.08;
+    const outline = Math.max(sourceLine, ridge);
+    const silverR = 0.48 + outline * 0.20;
+    const silverG = 0.52 + outline * 0.20;
+    const silverB = 0.58 + outline * 0.20;
     const warm = personLift * ridge * 0.10;
     positions[t] = stretchedX;
     positions[t + 1] = data[o + 1];
     positions[t + 2] = z;
-    colors[t] = white;
-    colors[t + 1] = white * (1 - warm * 0.12);
-    colors[t + 2] = white * (1 - warm * 0.28);
-    params[t] = data[o + 6] * (0.96 + Math.max(sourceLine, ridge) * 0.08);
+    colors[t] = silverR + warm * 0.12;
+    colors[t + 1] = silverG + warm * 0.055;
+    colors[t + 2] = silverB * (1 - warm * 0.12);
+    params[t] = data[o + 6] * (0.84 + outline * 0.06);
     params[t + 1] = hash01(sourceIndex, 7741);
     params[t + 2] = visibility;
   }

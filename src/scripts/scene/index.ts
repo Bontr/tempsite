@@ -123,7 +123,7 @@ const initializeScene = async () => {
     twinkleStrength: 1.0,
     progressStrength: 1.0,
   });
-  const terrainMaterial = createTerrainMaterial(0.68, 1.72, 0.84);
+  const terrainMaterial = createTerrainMaterial(0.58, 1.52, 0.92);
   const flowerBloomMaterial = createDensityBloomMaterial(0.060, 1.05, 2.55, 0.78);
   const galaxyBloomMaterial = createDensityBloomMaterial(0.055, 1.0, 2.40, 0.25);
 
@@ -257,8 +257,12 @@ const initializeScene = async () => {
     tiltX: number,
     rotationZ: number,
     opacity: number,
+    count = 2200,
+    particleMin = 0.13,
+    particleRange = 0.055,
+    minPixelSize = 0.22,
+    maxPixelSize = 0.48,
   ) => {
-    const count = 2200;
     const offsets = new Float32Array(count * 3);
     const colors = new Float32Array(count * 3);
     const params = new Float32Array(count * 3);
@@ -276,7 +280,7 @@ const initializeScene = async () => {
       const o = i * 3;
       offsets.set([center.x + xSpun, center.y + ySpun, center.z + zTilted], o);
       colors.set([1.0, 0.48 + seed * 0.14, 0.20 + seed * 0.08], o);
-      params.set([0.13 + seed * 0.055, seed, 1], o);
+      params.set([particleMin + seed * particleRange, seed, 1], o);
     }
     const geometry = new THREE.InstancedBufferGeometry();
     geometry.setAttribute('position', new THREE.Float32BufferAttribute([
@@ -292,8 +296,8 @@ const initializeScene = async () => {
       opacity,
       intensity: 1.0,
       sizeMultiplier: 1.0,
-      minPixelSize: 0.22,
-      maxPixelSize: 0.48,
+      minPixelSize,
+      maxPixelSize,
       additive: true,
     });
     const mesh = new THREE.Mesh(geometry, material);
@@ -302,8 +306,8 @@ const initializeScene = async () => {
     return { mesh, material, count };
   };
 
-  const flowerOrbitA = createOrbit(FLOWER_CENTER, 5.4, 1.3, 62, -6, 0.55);
-  const flowerOrbitB = createOrbit(FLOWER_CENTER, 4.2, 1.02, -55, 22, 0.34);
+  const flowerOrbitA = createOrbit(FLOWER_CENTER, 5.4, 1.3, 62, -6, 0.55, 3600, 0.070, 0.022, 0.10, 0.24);
+  const flowerOrbitB = createOrbit(FLOWER_CENTER, 4.2, 1.02, -55, 22, 0.34, 3200, 0.065, 0.020, 0.10, 0.22);
   const galaxyWorldCenter = GALAXY_CENTER.clone().add(new THREE.Vector3(0, -worldGap, 0));
   const galaxyOrbitA = createOrbit(galaxyWorldCenter, 8.4, 2.5, 53, -7, 0.14);
   const galaxyOrbitB = createOrbit(galaxyWorldCenter, 6.35, 1.9, -48, 10, 0.07);
@@ -471,7 +475,7 @@ const initializeScene = async () => {
     galaxyBloomMaterial.uniforms.uOpacity.value = 0.055;
 
     foreground.visible = landscapeExit > 0.002;
-    terrainMaterial.uniforms.uOpacity.value = 0.95 * landscapeExit;
+    terrainMaterial.uniforms.uOpacity.value = 0.56 * landscapeExit;
     person.visible = landscapeExit > 0.002;
     personMaterial.opacity = landscapeExit;
     personKey.intensity = 6.8 * landscapeExit;
@@ -482,8 +486,8 @@ const initializeScene = async () => {
     starMaterial.uniforms.uProgress.value = 0.018 + travelPulse * 0.012;
     starMaterial.uniforms.uOpacity.value = 0.50;
 
-    flowerOrbitA.material.uniforms.uOpacity.value = 0.18 * flowerExit;
-    flowerOrbitB.material.uniforms.uOpacity.value = 0.08 * flowerExit;
+    flowerOrbitA.material.uniforms.uOpacity.value = 0.15 * flowerExit;
+    flowerOrbitB.material.uniforms.uOpacity.value = 0.06 * flowerExit;
     flowerOrbitA.mesh.visible = flowerExit > 0.002;
     flowerOrbitB.mesh.visible = flowerExit > 0.002;
     galaxyOrbitA.material.uniforms.uOpacity.value = 0.14;
