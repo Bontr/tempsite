@@ -6,7 +6,7 @@ const MORPH_STRIDE = 15;
 const TERRAIN_STRIDE = 7;
 
 export const FLOWER_CENTER = new THREE.Vector3(4.9, 0.55, -6.2);
-export const GALAXY_CENTER = new THREE.Vector3(5.35, -0.15, -9.75);
+export const GALAXY_CENTER = new THREE.Vector3(6.57, 0.11, -9.74);
 
 export type SceneQuality = {
   morphCount: number;
