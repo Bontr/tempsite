@@ -5,6 +5,7 @@ import {
   createFlowerGeometry,
   createGalaxyGeometry,
   createTerrainGeometry,
+  createTerrainBloomGeometry,
   createStarGeometry,
   createFlowerBloomGeometry,
   createGalaxyBloomGeometry,
@@ -94,6 +95,9 @@ const initializeScene = async () => {
   const flowerGeometry = createFlowerGeometry(morph, quality.morphCount);
   const galaxyGeometry = createGalaxyGeometry(morph, quality.morphCount);
   const terrainGeometry = createTerrainGeometry(terrain, quality.terrainCount);
+  const terrainBloomCount = mobile ? 500 : 1200;
+  const terrainBloomGeometry = createTerrainBloomGeometry(terrain, terrainBloomCount);
+  const renderedTerrainBloomCount = terrainBloomGeometry.getAttribute('aOffset').count / 4;
   const starGeometry = createStarGeometry(quality.starCount, worldGap);
   const flowerBloomCount = mobile ? 1800 : 4200;
   const galaxyBloomCount = mobile ? 2200 : 5200;
@@ -125,6 +129,7 @@ const initializeScene = async () => {
     additive: true,
   });
   const terrainMaterial = createTerrainMaterial(0.68, 1.52, 1.07);
+  const terrainBloomMaterial = createDensityBloomMaterial(0.018, 0.90, 2.30, 0.48);
   const flowerBloomMaterial = createDensityBloomMaterial(0.060, 1.05, 2.55, 0.78);
   const galaxyBloomMaterial = createDensityBloomMaterial(0.055, 1.0, 2.40, 0.78);
 
@@ -148,6 +153,10 @@ const initializeScene = async () => {
   scene.add(galaxyPoints);
 
   const foreground = new THREE.Group();
+  const terrainBloomPoints = new THREE.Mesh(terrainBloomGeometry, terrainBloomMaterial);
+  terrainBloomPoints.frustumCulled = false;
+  terrainBloomPoints.renderOrder = -1;
+  foreground.add(terrainBloomPoints);
   const terrainPoints = new THREE.Mesh(terrainGeometry, terrainMaterial);
   terrainPoints.frustumCulled = false;
   foreground.add(terrainPoints);
@@ -477,6 +486,7 @@ const initializeScene = async () => {
 
     foreground.visible = landscapeExit > 0.002;
     terrainMaterial.uniforms.uOpacity.value = 0.67 * landscapeExit;
+    terrainBloomMaterial.uniforms.uOpacity.value = 0.018 * landscapeExit;
     person.visible = landscapeExit > 0.002;
     personMaterial.opacity = landscapeExit;
     personKey.intensity = 6.8 * landscapeExit;
@@ -514,6 +524,7 @@ const initializeScene = async () => {
       galaxyMaterial,
       starMaterial,
       terrainMaterial,
+      terrainBloomMaterial,
       flowerBloomMaterial,
       galaxyBloomMaterial,
       flowerOrbitA.material,
@@ -538,6 +549,7 @@ const initializeScene = async () => {
       const expectedParticleTriangles = (
         quality.morphCount * 2 +
         quality.terrainCount +
+        renderedTerrainBloomCount +
         renderedStarCount +
         flowerBloomCount +
         galaxyBloomCount +
@@ -595,6 +607,7 @@ const initializeScene = async () => {
       flowerGeometry,
       galaxyGeometry,
       terrainGeometry,
+      terrainBloomGeometry,
       starGeometry,
       flowerBloomGeometry,
       galaxyBloomGeometry,
@@ -610,6 +623,7 @@ const initializeScene = async () => {
       galaxyMaterial,
       starMaterial,
       terrainMaterial,
+      terrainBloomMaterial,
       flowerBloomMaterial,
       galaxyBloomMaterial,
       personMaterial,

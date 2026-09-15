@@ -129,6 +129,10 @@ export const createFlowerGeometry = (data: Float32Array, count: number) =>
 
 export const createGalaxyGeometry = (data: Float32Array, count: number) =>
   createMorphSideGeometry(data, count, 3, 9, 13, 31415, false);
+
+const terrainPersonDensity = (x: number, z: number) =>
+  Math.exp(-(((x + 1.65) / 0.72) ** 2 + ((z - 1.7) / 0.52) ** 2));
+
 export const createTerrainGeometry = (data: Float32Array, countLimit: number) => {
   const total = Math.floor(data.length / TERRAIN_STRIDE);
   const count = Math.min(total, countLimit);
@@ -148,7 +152,7 @@ export const createTerrainGeometry = (data: Float32Array, countLimit: number) =>
     const edgeBoost = THREE.MathUtils.smoothstep(Math.abs(x), 4.8, 8.0);
     const ridge = THREE.MathUtils.clamp(ridgeBand * (0.12 + edgeBoost * 0.88), 0, 1);
     const sourceLine = THREE.MathUtils.smoothstep(sourceLum, 0.025, 0.18);
-    const personLift = Math.exp(-(((x + 1.65) / 0.72) ** 2 + ((z - 1.7) / 0.52) ** 2));
+    const personLift = terrainPersonDensity(x, z);
     const visibility = THREE.MathUtils.clamp(0.002 + sourceLine * 0.52 + ridge * 0.66 + personLift * 0.10, 0, 1);
     const outline = Math.max(sourceLine, ridge);
     const silverR = 0.62 + outline * 0.24;
@@ -159,15 +163,56 @@ export const createTerrainGeometry = (data: Float32Array, countLimit: number) =>
     const warmG = silverG + warm * 0.08;
     const warmB = Math.max(0, silverB - warm * 0.06);
     const neutral = THREE.MathUtils.clamp(warmR * 0.2126 + warmG * 0.7152 + warmB * 0.0722, 0, 1);
+    const localWarm = personLift * (0.02 + outline * 0.035);
     positions[t] = stretchedX;
     positions[t + 1] = data[o + 1];
     positions[t + 2] = z;
-    colors[t] = neutral;
-    colors[t + 1] = neutral;
-    colors[t + 2] = neutral;
+    colors[t] = THREE.MathUtils.clamp(neutral + localWarm * 0.10, 0, 1);
+    colors[t + 1] = THREE.MathUtils.clamp(neutral + localWarm * 0.035, 0, 1);
+    colors[t + 2] = THREE.MathUtils.clamp(neutral - localWarm * 0.06, 0, 1);
     params[t] = data[o + 6] * (0.84 + outline * 0.06);
     params[t + 1] = hash01(sourceIndex, 7741);
     params[t + 2] = visibility;
+  }
+  return createQuadGeometry(positions, colors, params);
+};
+
+export const createTerrainBloomGeometry = (data: Float32Array, countLimit: number) => {
+  const total = Math.floor(data.length / TERRAIN_STRIDE);
+  const candidates: Array<{ index: number; weight: number }> = [];
+  for (let i = 0; i < total; i += 1) {
+    const o = i * TERRAIN_STRIDE;
+    const x = data[o];
+    const z = data[o + 2];
+    const sourceLum = data[o + 3] * 0.2126 + data[o + 4] * 0.7152 + data[o + 5] * 0.0722;
+    const sourceLine = THREE.MathUtils.smoothstep(sourceLum, 0.025, 0.18);
+    const weight = terrainPersonDensity(x, z) * (0.30 + sourceLine * 0.70);
+    if (weight > 0.12 && hash01(i, 8803) < 0.12 + weight * 0.32) {
+      candidates.push({ index: i, weight });
+    }
+  }
+
+  const count = Math.min(countLimit, candidates.length);
+  const positions = new Float32Array(count * 3);
+  const colors = new Float32Array(count * 3);
+  const params = new Float32Array(count * 3);
+  for (let i = 0; i < count; i += 1) {
+    const picked = candidates[sampledIndex(i, count, candidates.length)];
+    const o = picked.index * TERRAIN_STRIDE;
+    const t = i * 3;
+    const x = data[o];
+    const z = data[o + 2];
+    const edgeStretch = THREE.MathUtils.smoothstep(Math.abs(x), 4.5, 8.2);
+    const glow = THREE.MathUtils.clamp(0.80 + picked.weight * 0.20, 0, 1);
+    positions[t] = x * (1 + edgeStretch * 0.18);
+    positions[t + 1] = data[o + 1];
+    positions[t + 2] = z;
+    colors[t] = glow;
+    colors[t + 1] = glow;
+    colors[t + 2] = glow;
+    params[t] = data[o + 6] * (1.9 + picked.weight * 0.9);
+    params[t + 1] = hash01(picked.index, 8909);
+    params[t + 2] = 0.55 + picked.weight * 0.95;
   }
   return createQuadGeometry(positions, colors, params);
 };
