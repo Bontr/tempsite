@@ -93,7 +93,7 @@ const initializeScene = async () => {
 
   const flowerGeometry = createFlowerGeometry(morph, quality.morphCount);
   const galaxyGeometry = createGalaxyGeometry(morph, quality.morphCount);
-  const terrainGeometry = createTerrainGeometry(terrain, Math.round(quality.terrainCount * 0.68));
+  const terrainGeometry = createTerrainGeometry(terrain, Math.round(quality.terrainCount * 0.22));
   const starGeometry = createStarGeometry(quality.starCount, worldGap);
   const flowerBloomCount = mobile ? 1800 : 4200;
   const galaxyBloomCount = mobile ? 2200 : 5200;
@@ -124,7 +124,7 @@ const initializeScene = async () => {
     progressStrength: 1.0,
     additive: true,
   });
-  const terrainMaterial = createTerrainMaterial(0.56, 1.52, 1.02);
+  const terrainMaterial = createTerrainMaterial(0.78, 1.12, 1.18);
   const flowerBloomMaterial = createDensityBloomMaterial(0.060, 1.05, 2.55, 0.78);
   const galaxyBloomMaterial = createDensityBloomMaterial(0.055, 1.0, 2.40, 0.78);
 
@@ -476,7 +476,7 @@ const initializeScene = async () => {
     galaxyBloomMaterial.uniforms.uOpacity.value = 0.055;
 
     foreground.visible = landscapeExit > 0.002;
-    terrainMaterial.uniforms.uOpacity.value = 0.55 * landscapeExit;
+    terrainMaterial.uniforms.uOpacity.value = 0.76 * landscapeExit;
     person.visible = landscapeExit > 0.002;
     personMaterial.opacity = landscapeExit;
     personKey.intensity = 6.8 * landscapeExit;

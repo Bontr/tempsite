@@ -149,10 +149,10 @@ export const createTerrainGeometry = (data: Float32Array, countLimit: number) =>
     const ridge = THREE.MathUtils.clamp(ridgeBand * (0.12 + edgeBoost * 0.88), 0, 1);
     const sourceLine = THREE.MathUtils.smoothstep(sourceLum, 0.025, 0.18);
     const personLift = Math.exp(-(((x + 1.65) / 0.72) ** 2 + ((z - 1.7) / 0.52) ** 2));
-    const visibility = THREE.MathUtils.clamp(0.002 + sourceLine * 0.52 + ridge * 0.66 + personLift * 0.10, 0, 1);
+    const visibility = THREE.MathUtils.clamp(0.001 + sourceLine * 0.22 + ridge * 0.78 + personLift * 0.06, 0, 1);
     const outline = Math.max(sourceLine, ridge);
-    const neutralWhite = 0.80 + outline * 0.18;
-    const localLift = personLift * (0.03 + outline * 0.07);
+    const neutralWhite = 0.94 + outline * 0.06;
+    const localLift = personLift * (0.02 + outline * 0.04);
     positions[t] = stretchedX;
     positions[t + 1] = data[o + 1];
     positions[t + 2] = z;
