@@ -123,7 +123,7 @@ const initializeScene = async () => {
     twinkleStrength: 1.0,
     progressStrength: 1.0,
   });
-  const terrainMaterial = createTerrainMaterial(0.96, 1.72, 1.22);
+  const terrainMaterial = createTerrainMaterial(0.98, 2.08, 1.30);
   const flowerBloomMaterial = createDensityBloomMaterial(0.060, 1.05, 2.55, 0.78);
   const galaxyBloomMaterial = createDensityBloomMaterial(0.055, 1.0, 2.40, 0.25);
 
@@ -426,7 +426,6 @@ const initializeScene = async () => {
       ? clamp01(requestedTestProgress)
       : 0,
   };
-  const pointer = { x: 0, y: 0, targetX: 0, targetY: 0 };
   const cameraTarget = new THREE.Vector3();
 
   const syncScroll = () => {
@@ -439,18 +438,15 @@ const initializeScene = async () => {
   };
   window.addEventListener('scroll', syncScroll, { passive: true });
   window.addEventListener('resize', syncScroll, { passive: true });
-  window.addEventListener('pointermove', (event) => {
-    if (event.pointerType === 'touch') return;
-    pointer.targetX = (event.clientX / Math.max(1, window.innerWidth) - 0.5) * 2;
-    pointer.targetY = (0.5 - event.clientY / Math.max(1, window.innerHeight)) * 2;
-  }, { passive: true });
   syncScroll();
 
   const applyScene = (progress: number, time: number) => {
     const p = clamp01(progress);
     const travelPulse = Math.sin(p * Math.PI);
-    const flowerExit = 1 - THREE.MathUtils.smoothstep(p, 0.18, 0.40);
-    const landscapeExit = 1 - THREE.MathUtils.smoothstep(p, 0.24, 0.43);
+    // Keep the physical scene fully present. Camera travel alone moves the flower and
+    // foreground out of view; no opacity cross-fade is used during scrolling.
+    const flowerExit = 1;
+    const landscapeExit = 1;
     const fieldSettleStart = mobile ? 0.66 : 0.70;
     const fieldSettle = THREE.MathUtils.smoothstep(p, fieldSettleStart, 1);
     const shortWide = window.innerWidth >= 1400 && window.innerHeight <= 780;
@@ -462,12 +458,6 @@ const initializeScene = async () => {
     }
     cameraCurve.getPointAt(p, camera.position);
     targetCurve.getPointAt(p, cameraTarget);
-    pointer.x += (pointer.targetX - pointer.x) * 0.045;
-    pointer.y += (pointer.targetY - pointer.y) * 0.045;
-    camera.position.x += pointer.x * (0.18 - p * 0.07);
-    camera.position.y += pointer.y * (0.12 - p * 0.04);
-    cameraTarget.x += pointer.x * 0.08;
-    cameraTarget.y += pointer.y * 0.055;
     camera.lookAt(cameraTarget);
 
     flowerMaterial.uniforms.uTime.value = time;

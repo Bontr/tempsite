@@ -98,14 +98,16 @@ const createMorphSideGeometry = (
     const sourceIndex = sampledIndex(i, count, total);
     const o = sourceIndex * MORPH_STRIDE;
     const t = i * 3;
-    const jitter = flowerDither ? 0.055 : 0;
+    const jitter = flowerDither ? 0.12 : 0;
     positions[t] = data[o + positionOffset] + (hash01(sourceIndex, seedSalt + 101) - 0.5) * jitter;
     positions[t + 1] = data[o + positionOffset + 1] + (hash01(sourceIndex, seedSalt + 211) - 0.5) * jitter;
     positions[t + 2] = data[o + positionOffset + 2] + (hash01(sourceIndex, seedSalt + 307) - 0.5) * jitter;
     colors[t] = data[o + colorOffset];
     colors[t + 1] = data[o + colorOffset + 1];
     colors[t + 2] = data[o + colorOffset + 2];
-    params[t] = data[o + sizeOffset];
+    params[t] = data[o + sizeOffset] * (flowerDither
+      ? 0.84 + hash01(sourceIndex, seedSalt + 509) * 0.32
+      : 1);
     params[t + 1] = hash01(sourceIndex, seedSalt);
     params[t + 2] = 1;
   }
