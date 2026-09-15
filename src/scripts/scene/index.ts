@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import {
   FLOWER_CENTER,
+  GALAXY_CENTER,
   createFlowerGeometry,
   createGalaxyGeometry,
   createTerrainGeometry,
@@ -79,7 +80,7 @@ const initializeScene = async () => {
   renderer.setSize(window.innerWidth, window.innerHeight, false);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.18;
+  renderer.toneMappingExposure = 1.08;
 
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x020202);
@@ -116,9 +117,9 @@ const initializeScene = async () => {
   const starMaterial = createParticleMaterial({
     opacity: 0.54,
     intensity: 1.02,
-    sizeMultiplier: 1.90,
-    minPixelSize: 1.12,
-    maxPixelSize: 8.0,
+    sizeMultiplier: 2.70,
+    minPixelSize: 1.32,
+    maxPixelSize: 10.5,
     twinkleStrength: 1.0,
     progressStrength: 1.0,
   });
@@ -303,6 +304,9 @@ const initializeScene = async () => {
 
   const flowerOrbitA = createOrbit(FLOWER_CENTER, 5.4, 1.3, 62, -6, 0.55);
   const flowerOrbitB = createOrbit(FLOWER_CENTER, 4.2, 1.02, -55, 22, 0.34);
+  const galaxyWorldCenter = GALAXY_CENTER.clone().add(new THREE.Vector3(0, -worldGap, 0));
+  const galaxyOrbitA = createOrbit(galaxyWorldCenter, 8.4, 2.5, 53, -7, 0.14);
+  const galaxyOrbitB = createOrbit(galaxyWorldCenter, 6.35, 1.9, -48, 10, 0.07);
 
   const travelRandom = makeRng(7411);
   const travelCount = mobile ? 260 : 520;
@@ -422,6 +426,7 @@ const initializeScene = async () => {
       ? clamp01(requestedTestProgress)
       : 0,
   };
+  const pointer = { x: 0, y: 0, targetX: 0, targetY: 0 };
   const cameraTarget = new THREE.Vector3();
 
   const syncScroll = () => {
@@ -434,6 +439,11 @@ const initializeScene = async () => {
   };
   window.addEventListener('scroll', syncScroll, { passive: true });
   window.addEventListener('resize', syncScroll, { passive: true });
+  window.addEventListener('pointermove', (event) => {
+    if (event.pointerType === 'touch') return;
+    pointer.targetX = (event.clientX / Math.max(1, window.innerWidth) - 0.5) * 2;
+    pointer.targetY = (0.5 - event.clientY / Math.max(1, window.innerHeight)) * 2;
+  }, { passive: true });
   syncScroll();
 
   const applyScene = (progress: number, time: number) => {
@@ -452,6 +462,12 @@ const initializeScene = async () => {
     }
     cameraCurve.getPointAt(p, camera.position);
     targetCurve.getPointAt(p, cameraTarget);
+    pointer.x += (pointer.targetX - pointer.x) * 0.045;
+    pointer.y += (pointer.targetY - pointer.y) * 0.045;
+    camera.position.x += pointer.x * (0.18 - p * 0.07);
+    camera.position.y += pointer.y * (0.12 - p * 0.04);
+    cameraTarget.x += pointer.x * 0.08;
+    cameraTarget.y += pointer.y * 0.055;
     camera.lookAt(cameraTarget);
 
     flowerMaterial.uniforms.uTime.value = time;
@@ -480,6 +496,10 @@ const initializeScene = async () => {
     flowerOrbitB.material.uniforms.uOpacity.value = 0.08 * flowerExit;
     flowerOrbitA.mesh.visible = flowerExit > 0.002;
     flowerOrbitB.mesh.visible = flowerExit > 0.002;
+    galaxyOrbitA.material.uniforms.uOpacity.value = 0.14;
+    galaxyOrbitB.material.uniforms.uOpacity.value = 0.07;
+    galaxyOrbitA.mesh.visible = true;
+    galaxyOrbitB.mesh.visible = true;
 
     travelMaterial.opacity = 0.009;
     travelStreaks.rotation.z = time * 0.0025;
@@ -503,6 +523,8 @@ const initializeScene = async () => {
       galaxyBloomMaterial,
       flowerOrbitA.material,
       flowerOrbitB.material,
+      galaxyOrbitA.material,
+      galaxyOrbitB.material,
     ].forEach((material) => {
       material.uniforms.uViewport.value.set(width, height);
     });
@@ -525,7 +547,9 @@ const initializeScene = async () => {
         flowerBloomCount +
         galaxyBloomCount +
         flowerOrbitA.count +
-        flowerOrbitB.count
+        flowerOrbitB.count +
+        galaxyOrbitA.count +
+        galaxyOrbitB.count
       ) * 2;
       if (renderer.info.render.triangles < expectedParticleTriangles) {
         throw new Error(
@@ -583,6 +607,8 @@ const initializeScene = async () => {
       travelGeometry,
       flowerOrbitA.mesh.geometry,
       flowerOrbitB.mesh.geometry,
+      galaxyOrbitA.mesh.geometry,
+      galaxyOrbitB.mesh.geometry,
     ].forEach((geometry) => geometry.dispose());
     [
       flowerMaterial,
@@ -596,6 +622,8 @@ const initializeScene = async () => {
       travelMaterial,
       flowerOrbitA.material,
       flowerOrbitB.material,
+      galaxyOrbitA.material,
+      galaxyOrbitB.material,
     ].forEach((material) => material.dispose());
     person.traverse((object) => {
       if (object instanceof THREE.Mesh) object.geometry.dispose();

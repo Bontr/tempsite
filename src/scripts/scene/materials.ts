@@ -34,21 +34,18 @@ void main() {
   center.y -= uProgress * uProgressStrength * (0.44 + seed * 0.025);
   center.z += uProgress * uProgressStrength * (0.82 + seed * 0.04);
 
-  float eligible = step(0.45, fract(seed * 11.97));
-  float speed = 0.105 + fract(seed * 29.17) * 0.095;
-  float phase = fract(seed * 53.71 + uTime * speed);
-  float flashIn = smoothstep(0.78, 0.88, phase);
-  float flashOut = 1.0 - smoothstep(0.93, 0.995, phase);
-  float flash = eligible * flashIn * flashOut;
-  float dimIn = smoothstep(0.28, 0.36, phase);
-  float dimOut = 1.0 - smoothstep(0.46, 0.54, phase);
-  float dim = eligible * dimIn * dimOut;
-  vFlash = flash * uTwinkleStrength;
-  vTwinkle = 1.0 - dim * 0.62 * uTwinkleStrength + flash * 1.55 * uTwinkleStrength;
+  float eligible = step(0.18, fract(seed * 11.97));
+  float speed = 1.15 + fract(seed * 29.17) * 2.10;
+  float wave = 0.5 + 0.5 * sin(seed * 53.71 + uTime * speed);
+  float secondary = 0.5 + 0.5 * sin(seed * 91.13 + uTime * (0.55 + fract(seed * 7.11) * 0.65));
+  float sparkle = pow(wave, 7.0) * (0.55 + secondary * 0.45);
+  float twinkleBrightness = 0.38 + wave * 1.02 + sparkle * 1.15;
+  vFlash = eligible * sparkle * uTwinkleStrength;
+  vTwinkle = mix(1.0, mix(1.0, twinkleBrightness, eligible), uTwinkleStrength);
 
   vec4 mv = modelViewMatrix * vec4(center, 1.0);
   float distanceScale = clamp(11.5 / max(1.0, -mv.z), 0.48, 1.85);
-  float sizeLift = 1.0 + vFlash * 0.60;
+  float sizeLift = 1.0 + vFlash * 0.95;
   float px = clamp(particleSize * uSizeMultiplier * distanceScale * sizeLift, uMinPixelSize, uMaxPixelSize);
   vec4 clip = projectionMatrix * mv;
   clip.xy += position.xy * px * 2.0 / max(uViewport, vec2(1.0)) * clip.w;
@@ -73,7 +70,7 @@ void main() {
   float glow = 1.0 - smoothstep(0.08, 0.50, radius);
   vec3 color = mix(vColor, vec3(1.0), clamp(vFlash * 0.90, 0.0, 0.90));
   float brightness = max(0.08, vTwinkle);
-  float alpha = circle * uOpacity * min(1.0, 0.82 + brightness * 0.18);
+  float alpha = circle * uOpacity * clamp(0.45 + brightness * 0.55, 0.42, 1.0);
   gl_FragColor = vec4(color * uIntensity * brightness * (1.0 + glow * 0.16), alpha);
 }
 `;
