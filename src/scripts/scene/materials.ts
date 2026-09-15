@@ -57,7 +57,7 @@ void main() {
   float twinkleBrightness = 0.72 + wave * 0.48 + sparkle * 0.80;
   float swirlPresence = step(0.0001, abs(uSwirlAmount));
   float swirlGlow = 0.5 + 0.5 * sin(swirlPhase);
-  float swirlShimmer = mix(1.0, 0.92 + swirlGlow * 0.16, swirlPresence);
+  float swirlShimmer = mix(1.0, 0.74 + swirlGlow * 0.52, swirlPresence);
   vFlash = eligible * sparkle * uTwinkleStrength;
   vTwinkle = mix(1.0, mix(1.0, twinkleBrightness, eligible), uTwinkleStrength) * swirlShimmer;
 
@@ -232,7 +232,7 @@ void main() {
   vColor = aColor;
   float swirlPresence = step(0.0001, abs(uSwirlAmount));
   float swirlGlow = 0.5 + 0.5 * sin(swirlPhase);
-  vWeight = aParams.z * mix(1.0, 0.90 + swirlGlow * 0.20, swirlPresence);
+  vWeight = aParams.z * mix(1.0, 0.70 + swirlGlow * 0.60, swirlPresence);
 }
 `,
   fragmentShader: `
