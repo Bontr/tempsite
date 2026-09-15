@@ -108,6 +108,7 @@ attribute vec3 aColor;
 attribute vec3 aParams;
 varying vec2 vUv;
 varying vec3 vColor;
+varying float vVisibility;
 void main() {
   vec4 mv = modelViewMatrix * vec4(aOffset, 1.0);
   float distanceScale = clamp(9.8 / max(1.0, -mv.z), 0.46, 1.75);
@@ -116,7 +117,8 @@ void main() {
   clip.xy += position.xy * px * 2.0 / max(uViewport, vec2(1.0)) * clip.w;
   gl_Position = clip;
   vUv = uv;
-  vColor = aColor * aParams.z;
+  vColor = aColor;
+  vVisibility = clamp(aParams.z, 0.0, 1.0);
 }
 `;
 
@@ -125,13 +127,16 @@ uniform float uOpacity;
 uniform float uIntensity;
 varying vec2 vUv;
 varying vec3 vColor;
+varying float vVisibility;
 void main() {
   vec2 p = vUv - 0.5;
   float radius = length(p);
   float circle = 1.0 - smoothstep(0.34, 0.50, radius);
   if (circle < 0.01) discard;
   float glow = 1.0 - smoothstep(0.08, 0.50, radius);
-  gl_FragColor = vec4(vColor * uIntensity * (1.0 + glow * 0.14), circle * uOpacity);
+  float alpha = circle * uOpacity * vVisibility;
+  if (alpha < 0.004) discard;
+  gl_FragColor = vec4(vColor * uIntensity * (1.0 + glow * 0.10), alpha);
 }
 `;
 export const createTerrainMaterial = (
